@@ -1,4 +1,9 @@
+name = "ExactSparseInterpolations"
+uuid = "4940a230-de2b-479f-bdcb-226c19d43e5b"
 authors = ["sumiya11"]
-name = "ExactInterpolations"
-uuid = "eedb38f4-b62e-4f67-a694-c8578380ad69"
 version = "0.0.1"
+
+[deps]
+AbstractAlgebra = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
+Nemo = "2edaba10-b0f1-5616-af89-8c11ac63239a"
+Primes = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"

@@ -1,21 +1,18 @@
 
-const _bound = 2^20
+const _random_number_bound = 2^32-1
 
-generic_point(gf::Nemo.GaloisField) = rand(gf)
-generic_point(gff::Nemo.GaloisFmpzField) = rand(gff)
-generic_point(::Nemo.FlintIntegerRing) = ZZ(rand(1:_bound))
-generic_point(::Nemo.FlintRationalField) = QQ(generic_point(ZZ))
+random_point(gf::Nemo.GaloisField) = rand(gf)
+random_point(gff::Nemo.GaloisFmpzField) = rand(gff)
+random_point(::Nemo.FlintIntegerRing) = ZZ(rand(1:_random_number_bound))
+random_point(::Nemo.FlintRationalField) = QQ(random_point(ZZ))
 
-function generic_point(ring)
+function random_point(ring)
     K = base_ring(ring)
-    [generic_point(K) for _ in 1:nvars(ring)]
+    map(_ -> random_point(K), 1:nvars(ring))
 end
 
-function geometric_point(ring)
-    K = base_ring(ring)
-    map(K, nextprimes(2, nvars(ring)))
-end
+add_first_variable(ring; varname="x0") = first(PolynomialRing(base_ring(ring), append!([varname], map(string, AbstractAlgebra.symbols(ring)))))
+remove_first_variable(ring) = first(PolynomialRing(base_ring(ring), map(string, AbstractAlgebra.symbols(ring))[2:end]))
 
-
-univariatize(ring) = first(PolynomialRing(base_ring(ring), ["x"]))
-true_univariatize(ring) = first(PolynomialRing(base_ring(ring), "x"))
+univariatize(::Type{Ring}, ring; varname="x") where {Ring<:AbstractAlgebra.MPolyRing} = first(PolynomialRing(base_ring(ring), [varname]))
+univariatize(::Type{Ring}, ring; varname="x") where {Ring<:AbstractAlgebra.PolyRing} = first(PolynomialRing(base_ring(ring), varname))

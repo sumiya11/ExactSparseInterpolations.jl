@@ -1,48 +1,34 @@
 
+# Convenient blackbox representation for polynomials and functions
 mutable struct Blackbox{F}
+    # the function to be evaluated
     f::F
+    # the history of evaluations: x points and y points
     xs::Vector{Any}
     ys::Vector{Any}
 end
 
-function Blackbox(f::Function)
-    Blackbox(f, [], [])
-end
-
-function Blackbox(f::Nemo.RingElem)
-    Blackbox(x -> evaluate(f, x), [], [])
-end
+Blackbox(f) = Blackbox(f, Any[], Any[])
+Blackbox(f::Nemo.RingElem) = Blackbox(x -> evaluate(f, x))
 
 function Blackbox(pq::AbstractAlgebra.Generic.Frac{T}) where {T<:Nemo.RingElem}
-    Blackbox(x -> evaluate(numerator(pq), x) // evaluate(denominator(pq), x), [], [])
+    Blackbox(x -> evaluate(numerator(pq), x) // evaluate(denominator(pq), x))
 end
 
 function Blackbox(pq::Tuple{T, T}) where {T<:Nemo.RingElem}
-    Blackbox(x -> evaluate(pq[1], x) // evaluate(pq[2], x), [], [])
+    Blackbox(x -> evaluate(pq[1], x) // evaluate(pq[2], x))
 end
 
-function xs(bb::Blackbox)
-    bb.xs
-end
+xs(bb::Blackbox) = bb.xs
+ys(bb::Blackbox) = bb.ys
 
-function ys(bb::Blackbox)
-    bb.ys
-end
+Base.count(bb::Blackbox) = (@assert length(bb.ys) == length(bb.xs); length(bb.ys))
+Base.empty!(bb::Blackbox) = (empty!(bb.xs); empty!(bb.ys); bb)
 
-function Base.count(bb::Blackbox)
-    length(bb.ys)
-end
-
-function Base.empty!(bb::Blackbox)
-    empty!(bb.xs)
-    empty!(bb.ys)
-    bb
-end
-
+# evaluate the blackbox
 function (bb::Blackbox)(x)
     y = bb.f(x)
     push!(bb.xs, x)
     push!(bb.ys, y)
     y
 end
-

@@ -1,39 +1,78 @@
 #=
-    Interpolation via Newton method.
+    Newton algorithm.
 
-    Univariate, Dense, Deterministic, No-Early-Termination,
-    Blackbox & Given points.
+    Univariate, Dense, Deterministic, Blackbox.
 
-    *** Can be run incrementally point by point
+    Can be turned into an adaptive algorithm.
 
-    O()
+    d+1 evaluation points, where d is the polyomial degree.
 =#
 
-mutable struct Newton{T1} <: AbstractInterpolator
-    ring::T1
+mutable struct Newton{Ring, Poly} <: AbstractPolynomialInterpolator
+    ring::Ring
     d::Int
-    function Newton(ring::T; d::Int=1) where {T}
+    f::Poly
+    q::Poly
+    i::Int
+    function Newton(ring::Ring; d::Union{Integer, Nothing}=nothing) where {Ring}
         @assert Nemo.nvars(ring) == 1
-        @assert d >= 0
-        new{T}(ring, d)
+        @assert isnothing(d) || d >= 0
+        isnothing(d) && (d = typemax(Int))
+        new{Ring, elem_type(ring)}(ring, d, zero(ring), zero(ring), 0)
     end
 end
 
-function Nemo.interpolate(N::Newton{T1}, blackbox) where {T1}
-    xs = map(_ -> first(generic_point(parent(N))), 0:N.d)
-    ys = map(blackbox, xs)
-    interpolate(N, xs, ys)
+function Base.copy(n::Newton)
+    Newton(n.ring, n.d, n.f, n.q, n.i)
 end
 
-function Nemo.interpolate(N::Newton{T1}, 
-                    p::Vector{T}, m::Vector{T}) where {T1, T}
-    k = length(m)
-    R, x = parent(N), gen(N)
-    fx = R(m[1])
-    qx = x - p[1]
-    for i in 2:k
-        fx = fx + inv(qx(p[i]))*qx*(m[i] - fx(p[i]))
-        qx = (x - p[i])*qx
+function next_point!(N::Newton)
+    error("next! should be used directly.")
+end
+
+function next!(n::Newton, x, y)
+    R = n.ring
+    z = gen(R)
+    success = false
+    if iszero(n.i)
+        # if handling first point in the sequence
+        n.f = R(y)
+        n.q = z - x
+        n.i = 1
+        success = false
+    else
+        m = y - n.f(x)
+        n.i > n.d && @assert iszero(m)
+        n.f = n.f + inv(n.q(x))*n.q*m
+        n.q = n.q*(z - x)
+        n.i += 1
+        success = iszero(m) || n.i > n.d
     end
-    fx
+    success, n.f
+end
+
+function interpolate!(n::Newton, blackbox)
+    K = base_ring(n.ring)
+    f = one(n.ring)
+    success = false
+    i = 0
+    while i <= n.d && !success
+        x = random_point(K)
+        y = blackbox(x)
+        success, f = next!(n, x, y)
+        i += 1
+    end
+    f
+end
+
+function interpolate!(n::Newton, xs::Vector{T}, ys::Vector{T}) where {T}
+    f = one(n.ring)
+    i = 1
+    while i <= length(xs)
+        x = xs[i]
+        y = ys[i]
+        _, f = next!(n, x, y)
+        i += 1
+    end
+    f
 end

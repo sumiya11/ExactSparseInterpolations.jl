@@ -1,22 +1,19 @@
 #=
     Interpolation variable by variable [Zippel, 1990].
 
-    Multivariate, Dense-Sparse, No-Early-Termination,
-    Blackbox only.
+    Multivariate, Dense-Sparse, No-Early-Termination, Blackbox.
 
     The algorithm comes in two flavors:
     MC Probabilistic, and Deterministic
 
     Probabilistic version:
-        O(d*n*t) queries to blackbox (exactly, d*n*t - v*t - d*t)
+        O(d*n*t) queries to blackbox (exactly, d*n*t - v*t - d*t ?)
         O(d*n*t^2) runtime 
     Deterministic version:
 
 =#
 
-# Newton + Zippel?
-
-mutable struct Zippel{T1, T2, T3} <: AbstractInterpolator
+mutable struct Zippel{Ring, Point, T3} <: AbstractPolynomialInterpolator
     ring::T1
     d::Int
     t::Int
@@ -27,8 +24,8 @@ end
 
 function Zippel(ring, d::Integer;
                 t::Integer=-1, T::Integer=-1,
-                start_point=generic_point(ring),
-                dense_univariate_interpolator=Lagrange(univariatize(ring), d=d))
+                start_point=random_point(ring),
+                dense_univariate_interpolator=Newton(univariatize(ring), d=d))
     Zippel(ring, d, t, T, start_point, dense_univariate_interpolator)
 end
 
@@ -40,7 +37,7 @@ function skeleton_eval(poly, p)
     [prod((p .^ x)) for x in poly]
 end
 
-function Nemo.interpolate(z::Zippel{T1, T2, T3}, blackbox) where {T1, T2, T3}
+function interpolate!(z::Zippel{T1, T2, T3}, blackbox) where {T1, T2, T3}
     R = parent(z)
     v = nvars(R)
     K = base_ring(R)

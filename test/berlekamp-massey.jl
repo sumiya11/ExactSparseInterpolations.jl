@@ -1,9 +1,9 @@
 
-EI = ExactInterpolations
+ESI = ExactSparseInterpolations
 
-@testset "Berlekamp Massey over rationals" begin
+@testset "Berlekamp-Massey over rationals" begin
     Ru, z = PolynomialRing(QQ, "z")
-    I, R, Y = Nemo.fmpq, Nemo.FmpqPolyRing, Nemo.fmpq_poly
+    Ring, Point, Poly = Nemo.FmpqPolyRing, Nemo.fmpq, Nemo.fmpq_poly
     cases = [
         (
             seq=[1, 2, 4, 8, 16], 
@@ -12,7 +12,7 @@ EI = ExactInterpolations
         ),
         (
             seq=[0, 1, 1, 2, 3, 5, 8, 13], 
-            steps=[true, false, false, false, true, true, true, true], 
+            steps=[true, false, false, true, true, true, true, true], 
             gen=-z^2 - z + 1
         ),
         (
@@ -22,24 +22,24 @@ EI = ExactInterpolations
         ),
         (
             seq=[1, 1, 1, 1, 1], 
-            steps=[false, false, true, true, true], 
+            steps=[false, true, true, true, true], 
             gen=-z + 1
         ),
         (
             seq=[1, 1, 2, 5, 14, 42, 132, 429], 
-            steps=[false, false, false, false, false, false, false, false], 
+            steps=[false, true, false, false, false, false, false, false], 
             gen=-z + 1
         ),
     ]
 
-    bm = EI.BerlekampMassey{I, R, Y}(Ru)
+    bm = ESI.BerlekampMassey{Ring, Point, Poly}(Ru)
 
     for case in cases
         seq, steps, gen = case.seq, case.steps, case.gen
         Λ = nothing
         flag = nothing
         for (a, s) in zip(seq, steps)
-            flag, Λ = EI.next!(bm, I(a))
+            flag, Λ = ESI.next!(bm, Point(a))
             @test flag == s
         end
         if flag
@@ -48,3 +48,4 @@ EI = ExactInterpolations
         empty!(bm)
     end
 end
+

@@ -1,7 +1,7 @@
 
 maxdeg(f) = maximum(map(x -> degree(f, x), gens(parent(f)))) 
 
-EI = ExactInterpolations
+EI = ExactSparseInterpolations
 
 @testset "Zippel over rationals" begin
     R, (x1,) = PolynomialRing(QQ, ["x1"])

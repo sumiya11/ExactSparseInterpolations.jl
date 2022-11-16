@@ -1,4 +1,4 @@
-module ExactInterpolations
+module ExactSparseInterpolations
 
 import AbstractAlgebra
 using Nemo
@@ -12,28 +12,27 @@ include("blackbox.jl")
 
 include("berlekamp-massey.jl")
 
-include("vandermonde.jl")
-
-include("lagrange.jl")
-
 include("newton.jl")
-
-include("zippel.jl")
 
 include("ben-or-tiwari.jl")
 
-include("rational-difference.jl")
+include("direct-solve-rational.jl")
 
 include("cuyt-lee.jl")
 
+include("van-der-hoeven-lecerf.jl")
+
+export Blackbox
+
 export BerlekampMassey
-export Lagrange
 export Newton
-export Zippel
 export BenOrTiwari
 
 export CuytLee
+export vanDerHoevenLecerf
 
-export interpolate
+export interpolate!
+export next!
+export next_point!
 
 end

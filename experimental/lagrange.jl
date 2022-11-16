@@ -3,14 +3,12 @@
 
     Univariate, Dense, Deterministic, No-Early-Termination,
     Blackbox & Given points.
-
-    O()
 =#
 
-mutable struct Lagrange{T1} <: AbstractInterpolator
+mutable struct Lagrange{Ring} <: AbstractPolynomialInterpolator
     ring::T1
     d::Int
-    function Lagrange(ring::T; d::Integer=1) where {T}
+    function Lagrange(ring::T; d::Union{Integer, Nothing}=nothing) where {T}
         @assert Nemo.nvars(ring) == 1
         @assert d >= 0
         new{T}(ring, d)

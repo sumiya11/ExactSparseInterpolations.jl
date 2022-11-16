@@ -3,10 +3,12 @@ using TestSetExtensions
 
 using Nemo
 
-include("../src/ExactInterpolations.jl")
+include("../src/ExactSparseInterpolations.jl")
 
-@testset "All tests" begin
+@testset "All tests" verbose=true begin
     @includetests ["berlekamp-massey"]
-    @includetests ["lagrange","newton"]
-    @includetests ["zippel"]
+    @includetests ["newton"]
+    @includetests ["ben-or-tiwari"]
+    @includetests ["cuyt-lee"]
+    @includetests ["van-der-hoeven-lecerf"]
 end
