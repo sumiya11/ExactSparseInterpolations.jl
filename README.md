@@ -8,7 +8,7 @@ Run in Julia:
 import Pkg; Pkg.add(url="https://github.com/sumiya11/ExactSparseInterpolations.jl")
 ```
 
-### How to use?
+### How to use ExactSparseInterpolations.jl ?
 
 See file `example.jl` or the simple example below:
 
