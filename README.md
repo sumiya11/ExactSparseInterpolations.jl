@@ -16,12 +16,11 @@ See file `example.jl` or the simple example below:
 using ExactSparseInterpolations
 using Nemo
 
-# declare ring Q[x,y,z]
+# declare Q[x,y,z]
 R, (x, y, z) = QQ["x","y","z"]
 
 # example rational function
-interpolate_me = (x^2 + 4y*z + 3)//(x*y^2 - z)
-f = Blackbox(interpolate_me)
+f = Blackbox((x^2 - 4y*z + 3)//(x*y^2 + z))
 
 # van Der Hoeven and Lecerf algorithm in R with numerator
 # and denominator degrees not exceeding 3 and 4 respectively
