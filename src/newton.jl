@@ -1,11 +1,12 @@
 #=
-    Newton algorithm.
+    Newton polynomial interpolation algorithm.
 
     Univariate, Dense, Deterministic, Blackbox.
 
     Can be turned into an adaptive algorithm.
 
     d+1 evaluation points, where d is the polyomial degree.
+    O(d^2logd) arithmetic operations in the ground field.
 =#
 
 mutable struct Newton{Ring, Poly} <: AbstractPolynomialInterpolator
@@ -14,7 +15,7 @@ mutable struct Newton{Ring, Poly} <: AbstractPolynomialInterpolator
     f::Poly
     q::Poly
     i::Int
-    function Newton(ring::Ring; d::Union{Integer, Nothing}=nothing) where {Ring}
+    function Newton{Ring,Poly}(ring::Ring, d::Union{Integer, Nothing}) where {Ring, Poly}
         @assert Nemo.nvars(ring) == 1
         @assert isnothing(d) || d >= 0
         isnothing(d) && (d = typemax(Int))
@@ -22,15 +23,21 @@ mutable struct Newton{Ring, Poly} <: AbstractPolynomialInterpolator
     end
 end
 
-function Base.copy(n::Newton)
-    Newton(n.ring, n.d, n.f, n.q, n.i)
+Newton(ring::Ring; d::Union{Integer, Nothing}=nothing) where {Ring} = Newton{Ring, elem_type(ring)}(ring, d)
+
+function Base.copy(n::Newton{Ring,Poly}) where {Ring,Poly}
+    Newton{Ring,Poly}(n.ring, n.d, n.f, n.q, n.i)
 end
 
-function next_point!(N::Newton)
-    error("next! should be used directly.")
+function Base.empty!(n::Newton)
+    n.i = 0
+    n.q = zero(n.ring)
+    n.f = zero(n.ring)
 end
 
-function next!(n::Newton, x, y)
+# Performs a step in the newton interpolator,
+# given the new interpolation point: x and y = f(x)
+function next!(n::Newton, x::T, y::T) where {T}
     R = n.ring
     z = gen(R)
     success = false
@@ -41,9 +48,11 @@ function next!(n::Newton, x, y)
         n.i = 1
         success = false
     else
+        # O(dlogd)
         m = y - n.f(x)
-        n.i > n.d && @assert iszero(m)
+        # O(dlogd)
         n.f = n.f + inv(n.q(x))*n.q*m
+        # O(d)
         n.q = n.q*(z - x)
         n.i += 1
         success = iszero(m) || n.i > n.d

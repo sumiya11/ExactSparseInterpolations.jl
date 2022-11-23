@@ -16,6 +16,8 @@ include("newton.jl")
 
 include("ben-or-tiwari.jl")
 
+include("cauchy.jl")
+
 include("direct-solve-rational.jl")
 
 include("cuyt-lee.jl")

@@ -4,7 +4,12 @@
     https://dl.acm.org/doi/10.1145/3466895.3466896
 =#
 
-mutable struct vanDerHoevenLecerf{Ring, I1<:AbstractRationalInterpolator, I2<:AbstractPolynomialInterpolator} <: AbstractInterpolator
+# vanDerHoevenLecerf - an object used for interpolation.
+# ring - polynomial ring K[x1...xn],
+# N,D - bounds on the degrees of numerator and denominator,
+# univariate_rational_interpolator - an object that can interpolate rational functions,
+# multivariate_poly_interpolator - an object that can interpolate polynomials;
+mutable struct vanDerHoevenLecerf{Ring, I1<:AbstractRationalInterpolator, I2<:AbstractPolynomialInterpolator} <: AbstractRationalInterpolator
     ring::Ring
     N::Int
     D::Int
@@ -12,12 +17,18 @@ mutable struct vanDerHoevenLecerf{Ring, I1<:AbstractRationalInterpolator, I2<:Ab
     multivariate_poly_interpolator::I2
 end
 
+# Creates a vanDerHoevenLecerf object from the given polynomial ring 
+# and the given degree bounds
 function vanDerHoevenLecerf(ring, N::Integer, D::Integer; 
         univariate_rational_interpolator=DirectSolveRational(univariatize(Nemo.PolyRing, ring), N, D),
-        multivariate_poly_interpolator=BenOrTiwari(add_first_variable(ring)))
+        multivariate_poly_interpolator=BenOrTiwari(homogenize(ring)))
+    @assert N >= 0 && D >= 0
     vanDerHoevenLecerf(ring, N, D, univariate_rational_interpolator, multivariate_poly_interpolator)
 end
 
+# Given a vanDerHoevenLecerf object and a blackbox function,
+# returns a tuple of polynomials (P, Q), 
+# such that P/Q interpolates the blackbox function
 function interpolate!(vdhl::vanDerHoevenLecerf, blackbox)
     R = vdhl.ring
     xs = Nemo.gens(R)
@@ -64,12 +75,12 @@ function interpolate!(vdhl::vanDerHoevenLecerf, blackbox)
         ωξsijh = [(ωξs .// ωξs[1])[2:end] for ωξs in ωξsij]
         # evaluate the blackbox
         fij = map(blackbox, ωξsijh)
-        # multiply evaluations by the correction factor
         # interpolate the numerator and the denominator densely.
         P, Q = interpolate!(uri, ξij, fij)
         @assert isone(trailing_coefficient(Q))
         # n and d are the true dense degrees of the numerator and denominator
         n, d = degree(P), degree(Q)
+        # multiply by the correction factor x0^(dA - dB)
         corrfactor = ω0^(n - d)
         P = map_coefficients(c -> c * corrfactor, P)
         # store coefficients of dense interpolation of P and Q
