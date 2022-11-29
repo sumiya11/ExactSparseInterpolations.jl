@@ -55,6 +55,7 @@ function interpolate!(cl::CuytLee, blackbox)
         # random points for dense rational interpolation,
         # f(ξ*x1,ξ*x2,..., ξ*xn) for ξ in ξij
         ξij = [random_point(K) for _ in 0:N + D]
+        @assert allunique(ξij) 
         # "substitute" ω 
         # f(ξ*ωi1,ξ*ωi2,..., ξ*ωin) for ξ in ξij
         ωξij = [ωi .* ξ for ξ in ξij]
@@ -65,6 +66,7 @@ function interpolate!(cl::CuytLee, blackbox)
         fij = map(blackbox, ωξsij)
         # interpolate the numerator and the denominator densely
         P, Q = interpolate!(uri, ξij, fij)
+        @info "" P Q
         @assert isone(trailing_coefficient(Q))
         # store coefficients of dense interpolation of P and Q
         # in P_coeffs and Q_coeffs respectively
@@ -105,6 +107,7 @@ function interpolate!(cl::CuytLee, blackbox)
                     success, f = next!(interpolator, y_point)
                     interpolated[idx] = f
                 end
+                @warn "$mark" interpolated[idx]
                 # if the coefficient is successfuly interpolated
                 if success
                     # update the contributions of higher degree term expansions 

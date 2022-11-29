@@ -20,13 +20,13 @@ ESI = ExactSparseInterpolations
         for case in cases
             f = ESI.Blackbox(case)
             n, d = degree(numerator(case)), degree(denominator(case))
-            c = ESI.Cauchy(R, n + 1, d + 1)
+            c = ESI.Cauchy(R, max(0, n), d)
             P, Q = ESI.interpolate!(c, f)
-            @test isone(leading_coefficient(Q))
+            @test isone(trailing_coefficient(Q))
             @test P//Q == case
             c = ESI.Cauchy(R, 2*(n+1), 2*(d+1))
             P, Q = ESI.interpolate!(c, f)
-            @test isone(leading_coefficient(Q))
+            @test isone(trailing_coefficient(Q))
             @test P//Q == case
         end
     end

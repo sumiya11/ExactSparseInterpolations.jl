@@ -20,7 +20,7 @@ end
 # Creates a vanDerHoevenLecerf object from the given polynomial ring 
 # and the given degree bounds
 function vanDerHoevenLecerf(ring, N::Integer, D::Integer; 
-        univariate_rational_interpolator=DirectSolveRational(univariatize(Nemo.PolyRing, ring), N, D),
+        univariate_rational_interpolator=Cauchy(univariatize(Nemo.PolyRing, ring), N, D),
         multivariate_poly_interpolator=BenOrTiwari(homogenize(ring)))
     @assert N >= 0 && D >= 0
     vanDerHoevenLecerf(ring, N, D, univariate_rational_interpolator, multivariate_poly_interpolator)
@@ -63,7 +63,7 @@ function interpolate!(vdhl::vanDerHoevenLecerf, blackbox)
         ω0 = ωi[1]
         # random points for dense rational interpolation,
         # f(ξ*x0,ξ*x1,ξ*x2,..., ξ*xn) for ξ in ξij
-        ξij = [random_point(K) for _ in 0:N + D]
+        ξij = distinct_points(K, N + D + 2)
         # "substitute" ωi,
         # f(ξ*ωi0, ξ*ωi1,ξ*ωi2,..., ξ*ωin) for ξ in ξij
         ωξij = [ωi .* ξ for ξ in ξij]
@@ -75,14 +75,13 @@ function interpolate!(vdhl::vanDerHoevenLecerf, blackbox)
         ωξsijh = [(ωξs .// ωξs[1])[2:end] for ωξs in ωξsij]
         # evaluate the blackbox
         fij = map(blackbox, ωξsijh)
+        # multiply by the correcton factor ω0^(N - D)
+        fij = map(cξ -> cξ[1] * (ω0*cξ[2] + shift[1])^(N - D), zip(fij, ξij))
         # interpolate the numerator and the denominator densely.
         P, Q = interpolate!(uri, ξij, fij)
         @assert isone(trailing_coefficient(Q))
         # n and d are the true dense degrees of the numerator and denominator
         n, d = degree(P), degree(Q)
-        # multiply by the correction factor x0^(dA - dB)
-        corrfactor = ω0^(n - d)
-        P = map_coefficients(c -> c * corrfactor, P)
         # store coefficients of dense interpolation of P and Q
         # in P_coeff and Q_coeff respectively
         for (poly, cfs) in ((P, P_coeff), (Q, Q_coeff))
@@ -96,12 +95,11 @@ function interpolate!(vdhl::vanDerHoevenLecerf, blackbox)
             (Q_coeff, Q_interpolated, Q_interpolator)
         )   
             y_point = last(cfs)
-            _ = next_point!(interpolator)
-            success, f = next!(interpolator, y_point)
+            success, f = next!(interpolator, next_point!(interpolator), y_point)
             interpolated[] = f
             all_interpolated = all_interpolated && success
         end
-        if i > 2^7
+        if i > 2^10
             throw(ErrorException("Something bad happened in vanDerHoevenLecerf"))
         end
     end

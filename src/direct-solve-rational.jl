@@ -22,13 +22,13 @@ end
 
 function interpolate!(dsr::DirectSolveRational, blackbox)
     K = base_ring(dsr.ring)
-    xs = map(_ -> random_point(K), 0:dsr.N + dsr.D)
+    xs = map(_ -> random_point(K), 0:dsr.N + dsr.D + 1)
     ys = map(blackbox, xs)
     interpolate!(dsr, xs, ys)
 end
 
 function interpolate!(dsr::DirectSolveRational, xs::Vector{T}, ys::Vector{T}) where {T}
-    @assert length(xs) == length(ys) == dsr.N + dsr.D + 1
+    @assert length(xs) == length(ys) == dsr.N + dsr.D + 2
     R = dsr.ring
     K = base_ring(R)
     N, D = dsr.N, dsr.D

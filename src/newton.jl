@@ -15,15 +15,16 @@ mutable struct Newton{Ring, Poly} <: AbstractPolynomialInterpolator
     f::Poly
     q::Poly
     i::Int
-    function Newton{Ring,Poly}(ring::Ring, d::Union{Integer, Nothing}) where {Ring, Poly}
-        @assert Nemo.nvars(ring) == 1
-        @assert isnothing(d) || d >= 0
-        isnothing(d) && (d = typemax(Int))
-        new{Ring, elem_type(ring)}(ring, d, zero(ring), zero(ring), 0)
-    end
 end
 
 Newton(ring::Ring; d::Union{Integer, Nothing}=nothing) where {Ring} = Newton{Ring, elem_type(ring)}(ring, d)
+
+function Newton{Ring,Poly}(ring::Ring, d::Union{Integer, Nothing}) where {Ring, Poly}
+    @assert Nemo.nvars(ring) == 1
+    @assert isnothing(d) || d >= 0
+    isnothing(d) && (d = typemax(Int))
+    Newton{Ring, elem_type(ring)}(ring, d, zero(ring), zero(ring), 0)
+end
 
 function Base.copy(n::Newton{Ring,Poly}) where {Ring,Poly}
     Newton{Ring,Poly}(n.ring, n.d, n.f, n.q, n.i)
@@ -33,6 +34,12 @@ function Base.empty!(n::Newton)
     n.i = 0
     n.q = zero(n.ring)
     n.f = zero(n.ring)
+end
+
+# Returns the next point for blackbox evaluation
+function next_point!(n::Newton; increment=false)
+    K = base_ring(n.ring)
+    random_point(K)
 end
 
 # Performs a step in the newton interpolator,

@@ -91,7 +91,7 @@ function discrete_log(m::BigInt, p::AbstractVector)
 end
 
 # 
-function next!(bot::BenOrTiwari{Ring,K,UnivRing,UnivPoly}, v::K) where {Ring,K,UnivRing,UnivPoly}
+function next!(bot::BenOrTiwari{Ring,K,UnivRing,UnivPoly}, _, v::K) where {Ring,K,UnivRing,UnivPoly}
     R = bot.ring
     bot.i += 1
     push!(bot.vi, v)

@@ -24,6 +24,8 @@ include("cuyt-lee.jl")
 
 include("van-der-hoeven-lecerf.jl")
 
+include("v-d-h-l-gcd.jl")
+
 export Blackbox
 
 export BerlekampMassey

@@ -1,7 +1,7 @@
 #=
     Interpolation variable by variable [Zippel, 1990].
 
-    Multivariate, Dense-Sparse, No-Early-Termination, Blackbox.
+    Multivariate, Dense-Sparse, Blackbox.
 
     The algorithm comes in two flavors:
     MC Probabilistic, and Deterministic
@@ -13,13 +13,13 @@
 
 =#
 
-mutable struct Zippel{Ring, Point, T3} <: AbstractPolynomialInterpolator
-    ring::T1
+mutable struct Zippel{Ring, Point, I} <: AbstractPolynomialInterpolator
+    ring::Ring
     d::Int
     t::Int
     T::Int
-    start_point::Vector{T2}
-    dense_univariate_interpolator::T3
+    start_point::Vector{Point}
+    dense_univariate_interpolator::I
 end
 
 function Zippel(ring, d::Integer;
