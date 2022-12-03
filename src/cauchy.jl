@@ -20,8 +20,8 @@ end
 function constrainedEEA(g, f, k::Integer)
     @assert degree(f) >= degree(g)
     R = parent(g)  # = K[x]
-    U = (one(R), zero(R), f)  # = [1, 0, f]
-    V = (zero(R), one(R), g)  # = [0, 1, g]
+    U = (one(R), zero(R), f)  # = (1, 0, f)
+    V = (zero(R), one(R), g)  # = (0, 1, g)
     # in Nemo, degree(0) is -1
     while degree(V[3]) > k
         q = div(U[3], V[3])

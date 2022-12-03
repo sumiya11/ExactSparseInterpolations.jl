@@ -54,7 +54,7 @@ function interpolate!(cl::CuytLee, blackbox)
         i += 1
         # random points for dense rational interpolation,
         # f(ξ*x1,ξ*x2,..., ξ*xn) for ξ in ξij
-        ξij = [random_point(K) for _ in 0:N + D]
+        ξij = [random_point(K) for _ in 0:N + D + 1]
         @assert allunique(ξij) 
         # "substitute" ω 
         # f(ξ*ωi1,ξ*ωi2,..., ξ*ωin) for ξ in ξij
@@ -104,7 +104,7 @@ function interpolate!(cl::CuytLee, blackbox)
                 initial[] = false
                 for y_point in y_points
                     _ = next_point!(interpolator)
-                    success, f = next!(interpolator, y_point)
+                    success, f = next!(interpolator, y_point, y_point)
                     interpolated[idx] = f
                 end
                 @warn "$mark" interpolated[idx]

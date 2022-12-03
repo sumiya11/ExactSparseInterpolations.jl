@@ -33,7 +33,9 @@ export Newton
 export BenOrTiwari
 
 export CuytLee
+
 export vanDerHoevenLecerf
+export vanDerHoevenLecerfGCD
 
 export interpolate!
 export next!

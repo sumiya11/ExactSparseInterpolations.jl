@@ -56,15 +56,22 @@ function Base.copy(bot::BenOrTiwari{Ring,K,UnivRing,UnivPoly}) where {Ring,K,Uni
     BenOrTiwari{Ring,K,UnivRing,UnivPoly}(bot.ring, bot.t, bot.T, copy(bot.ω0), copy(bot.ω), copy(bot.vi), bot.i, copy(bot.bm))
 end
 
+function starting_point(bot::BenOrTiwari{Ring,T}) where {Ring, T<:FracElem}
+    k = base_ring(bot.ring)
+    map(k, Primes.nextprimes(2, nvars(bot.ring)))
+end
+
+function starting_point(bot::BenOrTiwari{Ring,T}) where {Ring,T<:FinFieldElem}
+    k = base_ring(bot.ring)
+    map(k, Primes.nextprimes(2, nvars(bot.ring)))
+end
+
 # Returns the next point for blackbox evaluation
 function next_point!(bot::BenOrTiwari; increment=false)
-    nv = nvars(bot.ring)
-    K = base_ring(bot.ring)
     # if this is the first point in the sequence
     if iszero(bot.i)
-        # ω is [2, 3, 5, ..., prime_nv]
-        ps = Primes.nextprimes(2, nv)
-        bot.ω0 = map(K, ps)
+        # ω0 is [2, 3, 5, ..., prime_nv]
+        bot.ω0 = starting_point(bot)
         bot.ω = bot.ω0
     else
         # ω is [2^i, 3^i, 5^i, ..., prime_nv^i]
@@ -76,7 +83,8 @@ end
 
 # Given an integer m and a vector of primes p = [p1,p2,..pk]
 # returns a vector [i1,i2,..,ik], s.t. m == p1^i1*p2^i2*...*pk^ik
-discrete_log(m, p::AbstractVector) = discrete_log(BigInt(m), p)
+discrete_log(m::Nemo.fmpq, p::AbstractVector) = discrete_log(numerator(m), p)
+discrete_log(m::Nemo.fmpz, p::AbstractVector) = discrete_log(BigInt(m), p)
 
 function discrete_log(m::BigInt, p::AbstractVector)
     d = Primes.factor(Dict, m)
@@ -85,6 +93,17 @@ function discrete_log(m::BigInt, p::AbstractVector)
         p = BigInt(numerator(p))
         if haskey(d, p)
             monom[i] = d[p]
+        end
+    end
+    monom
+end
+
+function discrete_log(m::T, p::AbstractVector) where {T<:FinFieldElem}
+    monom = zeros(Int, length(p))
+    for (i, p_i) in enumerate(p)
+        while data(m) >= data(p_i) && iszero(mod(data(m), data(p_i)))
+            monom[i] += 1
+            m = m // p_i
         end
     end
     monom
@@ -105,7 +124,7 @@ function next!(bot::BenOrTiwari{Ring,K,UnivRing,UnivPoly}, _, v::K) where {Ring,
     mi = Nemo.roots(Lrev)
     # find the monomials of the interpolant:
     monoms = [
-        discrete_log(numerator(m), bot.ω0)
+        discrete_log(m, bot.ω0)
         for m in mi
     ]
     # find the coefficients of the interpolant:
@@ -128,7 +147,7 @@ function interpolate!(bot::BenOrTiwari, blackbox)
     while !success
         x = next_point!(bot)
         y = blackbox(x)
-        success, f = next!(bot, y)
+        success, f = next!(bot, y, y)
     end
     f
 end

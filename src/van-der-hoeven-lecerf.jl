@@ -80,6 +80,7 @@ function interpolate!(vdhl::vanDerHoevenLecerf, blackbox)
         # interpolate the numerator and the denominator densely.
         P, Q = interpolate!(uri, ξij, fij)
         @assert isone(trailing_coefficient(Q))
+        empty!(uri)
         # n and d are the true dense degrees of the numerator and denominator
         n, d = degree(P), degree(Q)
         # store coefficients of dense interpolation of P and Q

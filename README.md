@@ -29,3 +29,23 @@ vdhl = vanDerHoevenLecerf(R, 3, 4)
 i = interpolate!(vdhl, f)
 (x^2 - 4*y*z + 3, x*y^2 + z)
 ```
+
+Note that the `vdhl` object is mutated in `interpolate!`.
+
+Or, over a finite field:
+
+```julia
+# declare Z[x,y]/<2^31-1>
+R, (x, y) = GF(2^31-1)["x","y"]
+
+f = Blackbox((x - y + 8)^5 // (x + 2x*y))
+
+vdhl = vanDerHoevenLecerf(R, 5, 2)
+
+num, den = interpolate!(vdhl, f)
+
+@assert num//den == (x - y + 8)^5 // (x + 2x*y)
+
+```
+
+*Note that this will uncontrollably produce wrong results in the case the field characteristic $p$ is too small ($p$ should be at least $\Omega(n^d)$).*

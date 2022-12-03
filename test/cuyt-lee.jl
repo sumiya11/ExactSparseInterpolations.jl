@@ -2,7 +2,7 @@ ESI = ExactSparseInterpolations
 
 maxdeg(f) = maximum(map(t -> total_degree(t), terms(f)), init=0) 
 
-@testset "Cuyt-Lee over rationals" begin
+@testset "Cuyt-Lee, Q" begin
     R, (x1,x2) = PolynomialRing(QQ, ["x1","x2"])
     cases = [
         (x1)//(2x2 + 1), R(2)//R(3), R(0)//R(1),

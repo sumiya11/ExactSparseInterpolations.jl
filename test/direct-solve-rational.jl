@@ -1,7 +1,7 @@
 
 ESI = ExactSparseInterpolations
 
-@testset "Direct-Solve over rationals" begin
+@testset "Direct-Solve, Q and Z/Zp" begin
     for ground in [QQ, GF(2^31-1)]
         R, z = PolynomialRing(QQ, "z")
         cases = [
