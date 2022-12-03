@@ -48,4 +48,4 @@ num, den = interpolate!(vdhl, f)
 
 ```
 
-*Note that this will uncontrollably produce wrong results in the case the field characteristic $p$ is too small ($p$ should be at least $\Omega(n^d)$).*
+Note that this will uncontrollably produce wrong results in the case the field characteristic $p$ is too small ($p$ should be at least $\Omega(n^d)$).
