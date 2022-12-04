@@ -10,6 +10,8 @@ include("generic.jl")
 
 include("blackbox.jl")
 
+include("fastgcd.jl")
+
 include("berlekamp-massey.jl")
 
 include("newton.jl")

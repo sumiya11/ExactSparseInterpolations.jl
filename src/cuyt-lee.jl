@@ -66,7 +66,7 @@ function interpolate!(cl::CuytLee, blackbox)
         fij = map(blackbox, ωξsij)
         # interpolate the numerator and the denominator densely
         P, Q = interpolate!(uri, ξij, fij)
-        @info "" P Q
+        # @info "" P Q
         @assert isone(trailing_coefficient(Q))
         # store coefficients of dense interpolation of P and Q
         # in P_coeffs and Q_coeffs respectively
@@ -107,7 +107,7 @@ function interpolate!(cl::CuytLee, blackbox)
                     success, f = next!(interpolator, y_point, y_point)
                     interpolated[idx] = f
                 end
-                @warn "$mark" interpolated[idx]
+                # @warn "$mark" interpolated[idx]
                 # if the coefficient is successfuly interpolated
                 if success
                     # update the contributions of higher degree term expansions 

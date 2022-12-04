@@ -6,6 +6,7 @@ using Nemo
 include("../src/ExactSparseInterpolations.jl")
 
 @testset "All tests" verbose=true begin
+    @includetests ["fastgcd"]
     @includetests ["berlekamp-massey"]
     @includetests ["newton"]
     @includetests ["ben-or-tiwari"]
