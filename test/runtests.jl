@@ -13,4 +13,5 @@ include("../src/ExactSparseInterpolations.jl")
     @includetests ["direct-solve-rational", "cauchy"]
     @includetests ["cuyt-lee"]
     @includetests ["van-der-hoeven-lecerf"]
+    @includetests ["adaptive-van-der-hoeven-lecerf"]
 end

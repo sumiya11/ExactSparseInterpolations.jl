@@ -117,3 +117,11 @@ function interpolate!(vdhl::vanDerHoevenLecerf, blackbox)
     Q = map_coefficients(c -> div(c, normalization_factor), Q)
     P, Q
 end
+
+function next_point!(vdhl::vanDerHoevenLecerf)
+    
+end
+
+function next!(vdhl::vanDerHoevenLecerf, y)
+
+end

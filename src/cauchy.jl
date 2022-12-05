@@ -60,3 +60,46 @@ function interpolate!(c::Cauchy, xs::Vector{T}, ys::Vector{T}) where {T}
     normfactor = trailing_coefficient(t)
     divexact(r, normfactor), divexact(t, normfactor)
 end
+
+mutable struct AdaptiveCauchy{Ring, I1<:AbstractPolynomialInterpolator, T} <: AbstractRationalInterpolator
+    ring::Ring
+    i::Int
+    prevnum::Int
+    prevden::Int
+    xs::Vector{T}
+    dense_polynomial_interpolator::I1
+end
+
+function AdaptiveCauchy(ring::Ring; dense_polynomial_interpolator=Newton(ring)) where {Ring}
+    AdaptiveCauchy(ring, 0, -1, -1, Vector{elem_type(base_ring(ring))}(undef, 0), dense_polynomial_interpolator)
+end
+
+# refreshes the current state of the interpolator
+function Base.empty!(c::AdaptiveCauchy)
+    empty!(c.dense_polynomial_interpolator)
+    empty!(c.xs)
+    c.prevden = -1
+    c.prevnum = -1
+end
+
+function next_point!(ac::AdaptiveCauchy)
+    random_point(base_ring(ac.ring))
+end
+
+function next!(c::AdaptiveCauchy, x, y)
+    push!(c.xs, x)
+    R = c.ring
+    z = gen(R)
+    dpi = c.dense_polynomial_interpolator
+    _, F = next!(dpi, x, y)
+    modulo = prod(z - x for x in c.xs)
+    k = div(c.i, 2)
+    c.i += 1
+    r, t, _ = constrainedEEA(F, modulo, k)
+    prevnum, prevden = c.prevnum, c.prevden
+    c.prevnum, c.prevden = degree(r), degree(t)
+    !isunit(gcd(r, t)) && (return false, (one(R), one(R)))
+    (degree(r) != prevnum || degree(t) != prevden) && (return false, (one(R), one(R)))
+    normfactor = trailing_coefficient(t)
+    true, (divexact(r, normfactor), divexact(t, normfactor))
+end
