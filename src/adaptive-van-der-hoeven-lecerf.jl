@@ -31,6 +31,30 @@ function adaptiveVanDerHoevenLecerf(ring, N::Integer, D::Integer;
     )
 end
 
+function Base.copy(a::adaptiveVanDerHoevenLecerf)
+    adaptiveVanDerHoevenLecerf(a.ring, a.N, a.D, a.idx, 
+        copy(a.ξa), 
+        copy(a.ωi), 
+        copy(a.ξij), 
+        copy(a.fij),
+        copy(a.shift),
+        copy(a.univariate_rational_interpolator), 
+        copy(a.multivariate_poly_interpolator_num), 
+        copy(a.multivariate_poly_interpolator_den)
+    )
+end
+
+function synchronize!(avdhl1::T, other::Vector{T}) where {T}
+    for o in other
+        o.shift = avdhl1.shift
+        o.ξa = avdhl1.ξa
+        o.ωi = avdhl1.ωi
+        o.ξij = avdhl1.ξij
+        o.idx = avdhl1.idx
+    end
+    nothing
+end
+
 function next_point!(avdhl::adaptiveVanDerHoevenLecerf)
     if iszero(avdhl.idx)
         ωi = next_point!(avdhl.multivariate_poly_interpolator_num)

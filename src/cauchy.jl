@@ -14,6 +14,10 @@ function Cauchy(ring::Ring, N::Integer, D::Integer; dense_polynomial_interpolato
     Cauchy(ring, N, D, dense_polynomial_interpolator)
 end
 
+function Base.copy(c::Cauchy)
+    Cauchy(c.ring, c.N, c.D, copy(c.dense_polynomial_interpolator))
+end
+
 # given (polynomials) g and f (|f| >= |g|),
 # computes and returns a single row from the EEA algorithm (r, t, s), 
 # such that r = t*g + s*f, |r| < k, where |r| is the maximal possible
