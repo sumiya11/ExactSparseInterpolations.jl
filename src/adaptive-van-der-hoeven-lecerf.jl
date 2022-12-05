@@ -46,11 +46,11 @@ end
 
 function synchronize!(avdhl1::T, other::Vector{T}) where {T}
     for o in other
-        o.shift = avdhl1.shift
-        o.ξa = avdhl1.ξa
-        o.ωi = avdhl1.ωi
-        o.ξij = avdhl1.ξij
-        o.idx = avdhl1.idx
+        o.shift = copy(avdhl1.shift)
+        o.ξa = copy(avdhl1.ξa)
+        o.ωi = copy(avdhl1.ωi)
+        o.ξij = copy(avdhl1.ξij)
+        o.idx = copy(avdhl1.idx)
     end
     nothing
 end
