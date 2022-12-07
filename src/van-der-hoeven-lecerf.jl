@@ -100,7 +100,7 @@ function interpolate!(vdhl::vanDerHoevenLecerf, blackbox)
             interpolated[] = f
             all_interpolated = all_interpolated && success
         end
-        if i > 2^10
+        if i > 2^20
             throw(ErrorException("Something bad happened in vanDerHoevenLecerf"))
         end
     end

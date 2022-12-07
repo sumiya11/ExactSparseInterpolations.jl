@@ -2,6 +2,66 @@ ESI = ExactSparseInterpolations
 
 maxdeg(f) = maximum(map(t -> total_degree(t), terms(f)), init=0) 
 
+@testset "simultaneous adaptive v-d-h-l" begin
+    R, (x1,x2,x3) = PolynomialRing(GF(fmpz(4611686018427388039)), ["x1","x2","x3"])
+    case = [
+        [R(1)//R(x2^3), R(1)//(x2), (x1*x2*x3)//(x2 + 8)],
+        [R(1)//R(1), R(1)//(x2^4), (x1 - x2)^2 // (x2 - x3)^2],
+        [R(4)//R(5), x2^4//x1^3]
+    ]
+    fs = [
+        [ESI.Blackbox(c) for c in casei]
+        for casei in case
+    ]
+    ans = [
+        [one(R)//one(R) for c in casei]
+        for casei in case
+    ]
+    Is = ESI.several_adaptiveVanDerHoevenLecerf(R, 4, 4, fs)
+    i = 0
+    all_interpolated = false
+    while !all_interpolated
+        all_interpolated = true
+        x = ESI.next_point!(Is)
+        for i in 1:length(Is)
+            for j in 1:length(Is[i])
+                flag, (P, Q) = ESI.next!(Is[i][j], fs[i][j](x))
+                all_interpolated = all_interpolated && flag
+                ans[i][j] = P//Q
+            end
+        end
+    end
+    @test case == ans
+
+    case = [
+        [(x1 - x2)^8//x2^3, R(1)//R(99)],
+        [R(999)//(x1*x2*x3)^3, (x1 + x2 + x3 + 1)^3//R(8)],
+    ]
+    fs = [
+        [ESI.Blackbox(c) for c in casei]
+        for casei in case
+    ]
+    ans = [
+        [one(R)//one(R) for c in casei]
+        for casei in case
+    ]
+    Is = ESI.several_adaptiveVanDerHoevenLecerf(R, 8, 9, fs)
+    i = 0
+    all_interpolated = false
+    while !all_interpolated
+        all_interpolated = true
+        x = ESI.next_point!(Is)
+        for i in 1:length(Is)
+            for j in 1:length(Is[i])
+                flag, (P, Q) = ESI.next!(Is[i][j], fs[i][j](x))
+                all_interpolated = all_interpolated && flag
+                ans[i][j] = P//Q
+            end
+        end
+    end
+    @test case == ans
+end
+
 @testset "adaptive van-der-Hoeven-Lecerf, Q" begin
     R, (x1,x2) = PolynomialRing(QQ, ["x1","x2"])
     cases = [
@@ -61,7 +121,7 @@ maxdeg(f) = maximum(map(t -> total_degree(t), terms(f)), init=0)
 
 end
 
-@testset "van-der-Hoeven-Lecerf, Z/Zp" begin
+@testset "adaptive van-der-Hoeven-Lecerf, Z/Zp" begin
     R, (x1,x2) = PolynomialRing(GF(2^31-1), ["x1","x2"])
     cases = [
         (x1)//(2x2 + 1), R(2)//R(3), R(0)//R(1),

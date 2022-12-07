@@ -56,6 +56,16 @@ function Base.copy(bot::BenOrTiwari{Ring,K,UnivRing,UnivPoly}) where {Ring,K,Uni
     BenOrTiwari{Ring,K,UnivRing,UnivPoly}(bot.ring, bot.t, bot.T, copy(bot.ω0), copy(bot.ω), copy(bot.vi), bot.i, copy(bot.bm))
 end
 
+function Base.empty!(bot::BenOrTiwari)
+    empty!(bot.ω0)
+    empty!(bot.ω)
+    empty!(bot.vi)
+    bm.i = 0
+    empty!(bot.bm)
+    bot
+    bm
+end
+
 function starting_point(bot::BenOrTiwari{Ring,T}) where {Ring, T<:FracElem}
     k = base_ring(bot.ring)
     map(k, Primes.nextprimes(2, nvars(bot.ring)))
@@ -110,7 +120,9 @@ function discrete_log(m::T, p::AbstractVector) where {T<:FinFieldElem}
 end
 
 # 
-function next!(bot::BenOrTiwari{Ring,K,UnivRing,UnivPoly}, _, v::K) where {Ring,K,UnivRing,UnivPoly}
+next!(bot::BenOrTiwari, _, v) = next!(bot, v)
+
+function next!(bot::BenOrTiwari{Ring,K,UnivRing,UnivPoly}, v::K) where {Ring,K,UnivRing,UnivPoly}
     R = bot.ring
     bot.i += 1
     push!(bot.vi, v)

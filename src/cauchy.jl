@@ -82,8 +82,10 @@ end
 function Base.empty!(c::AdaptiveCauchy)
     empty!(c.dense_polynomial_interpolator)
     empty!(c.xs)
+    c.i = 0
     c.prevden = -1
     c.prevnum = -1
+    c
 end
 
 function next_point!(ac::AdaptiveCauchy)

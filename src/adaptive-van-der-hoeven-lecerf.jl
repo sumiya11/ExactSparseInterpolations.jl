@@ -44,42 +44,60 @@ function Base.copy(a::adaptiveVanDerHoevenLecerf)
     )
 end
 
-function synchronize!(avdhl1::T, other::Vector{T}) where {T}
-    for o in other
-        o.shift = copy(avdhl1.shift)
-        o.ξa = copy(avdhl1.ξa)
-        o.ωi = copy(avdhl1.ωi)
-        o.ξij = copy(avdhl1.ξij)
-        o.idx = copy(avdhl1.idx)
-    end
-    nothing
+function several_adaptiveVanDerHoevenLecerf(R, N, D, v)
+    one_for_all = adaptiveVanDerHoevenLecerf(R, N, D)
+    other = [
+        [
+            adaptiveVanDerHoevenLecerf(R, N, D, shift=one_for_all.shift)
+            for i in 1:length(v[j])
+        ]
+        for j in 1:length(v)
+    ]
+    other
 end
 
-function next_point!(avdhl::adaptiveVanDerHoevenLecerf)
-    if iszero(avdhl.idx)
-        ωi = next_point!(avdhl.multivariate_poly_interpolator_num)
-        # random points for dense rational interpolation,
-        # f(ξ*x0,ξ*x1,ξ*x2,..., ξ*xn) for ξ in ξij
-        ξij = distinct_points(base_ring(avdhl.ring), avdhl.N + avdhl.D + 2)
-        # "substitute" ωi,
-        # f(ξ*ωi0, ξ*ωi1,ξ*ωi2,..., ξ*ωin) for ξ in ξij
+function next_point!(avdhls::Vector{Vector{T}}) where {T}
+    a = avdhls[1][1]
+    shift = a.shift
+    if a.idx == a.N + a.D + 2
+        a.idx = 0
+    end
+    a.idx += 1
+    if isone(a.idx)
+        ωi = next_point!(a.multivariate_poly_interpolator_num)
+        ωi = next_point!(a.multivariate_poly_interpolator_den)
+        ξij = distinct_points(base_ring(a.ring), a.N + a.D + 2)
         ωξij = [ωi .* ξ for ξ in ξij]
         # shift in each variable,
         # f(ξ*ωi0 + s0, ξ*ωi1 + s1,ξ*ωi2 + s2,..., ξ*ωin + sn) for ξ in ξij
-        ωξsij = [ωξ .+ avdhl.shift for ωξ in ωξij]
+        ωξsij = [ωξ .+ a.shift for ωξ in ωξij]
         # homogenize
         # ωξsijh = { (ξ*ωi1 + s1)/(ξ*ωi0 + s0), (ξ*ωi2 + s2)/(ξ*ωi0 + s0)... } for ξ in ξij
         ωξsijh = [(ωξs .// ωξs[1])[2:end] for ωξs in ωξsij]
-        avdhl.ξa = ωξsijh
-        avdhl.ξij = ξij
-        avdhl.ωi = ωi
+        a.ξa = ωξsijh
+        a.ξij = ξij
+        a.ωi = ωi
+        for i in 1:length(avdhls)
+            for j in 1:length(avdhls[i])
+                if i == 1 && j == 1
+                    continue
+                end
+                aij = avdhls[i][j]
+                @assert shift == aij.shift
+                next_point!(aij.multivariate_poly_interpolator_num)
+                next_point!(aij.multivariate_poly_interpolator_den)
+                aij.ξa = a.ξa
+                aij.ξij = a.ξij
+                aij.ωi = a.ωi
+                aij.idx = a.idx
+            end
+        end
     end
-    avdhl.idx += 1
-    ans = avdhl.ξa[avdhl.idx]
-    if avdhl.idx == avdhl.N + avdhl.D + 2
-        avdhl.idx = 0
-    end
-    ans
+    a.ξa[a.idx]
+end
+
+function next_point!(avdhl::adaptiveVanDerHoevenLecerf)
+    next_point!([[avdhl]])
 end
 
 function next!(avdhl::adaptiveVanDerHoevenLecerf, y)
@@ -93,14 +111,14 @@ function next!(avdhl::adaptiveVanDerHoevenLecerf, y)
         uri = avdhl.univariate_rational_interpolator
         P, Q = interpolate!(uri, avdhl.ξij, fij)
         empty!(avdhl.fij)
-        @assert isone(trailing_coefficient(Q))
         empty!(uri)
+        @assert isone(trailing_coefficient(Q))
         inum = avdhl.multivariate_poly_interpolator_num
         iden = avdhl.multivariate_poly_interpolator_den
         cnum = leading_coefficient(P)
         cden = leading_coefficient(Q)
-        success_num, num = next!(inum, next_point!(inum), cnum)
-        success_den, den = next!(iden, next_point!(iden), cden)
+        success_num, num = next!(inum, cnum)
+        success_den, den = next!(iden, cden)
         if success_num && success_den
             R = avdhl.ring
             xs0 = gens(R)
