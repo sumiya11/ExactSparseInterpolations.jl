@@ -8,6 +8,12 @@ include("abstract.jl")
 
 include("generic.jl")
 
+include("discrete-log.jl")
+
+include("div-and-conq.jl")
+
+include("dft.jl")
+
 include("blackbox.jl")
 
 include("fastgcd.jl")
@@ -17,6 +23,8 @@ include("berlekamp-massey.jl")
 include("newton.jl")
 
 include("ben-or-tiwari.jl")
+
+include("javadi-monagan.jl")
 
 include("cauchy.jl")
 

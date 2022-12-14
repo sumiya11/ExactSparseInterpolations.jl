@@ -56,8 +56,7 @@ function fastgcd(r0, r1, k)
     hmj + (jm1 + 1), matmul2by2(S, matmul2by2(Qj, R))
 end
 
-function fastgcd(g, f)
-    (iszero(g) || iszero(f)) && (return one(g))
+function standardize(g, f)
     !ismonic(g) && (g = divexact(g, leading_coefficient(g)))
     !ismonic(f) && (f = divexact(f, leading_coefficient(f)))
     if degree(g) < degree(f)
@@ -67,9 +66,33 @@ function fastgcd(g, f)
         g, f = f, g - f 
     end
     @assert degree(g) > degree(f)
+    g, f
+end
+
+function fastgcd(g, f)
+    (iszero(g) || iszero(f)) && (return one(g))
+    g, f = standardize(g, f)
     _, R = fastgcd(g, f, degree(g))
     h = first(matvec2by1(R, (g, f)))
     divexact(h, leading_coefficient(h))
+end
+
+
+# given (polynomials) g and f (|f| >= |g|),
+# computes and returns a single row from the EEA algorithm (r, t, s), 
+# such that r = t*g + s*f, |r| < k, where |r| is the maximal possible
+function fastconstrainedEEA(g, f, k)
+    @assert degree(g) > degree(f)
+    # g, f = standardize(g, f)
+    _, R = fastgcd(g, f, degree(g) - k - 1)
+    ri, rj = matvec2by1(R, (g, f))
+    if degree(ri) <= k
+        t, s = R[1]
+        return ri, t, s 
+    else
+        t, s = R[2]
+        return rj, t, s
+    end
 end
 
 function slowgcd(g, f)
@@ -84,4 +107,22 @@ function slowgcd(g, f)
         V = T
     end
     U[3]
+end
+
+# given (polynomials) g and f (|f| >= |g|),
+# computes and returns a single row from the EEA algorithm (r, t, s), 
+# such that r = t*g + s*f, |r| < k, where |r| is the maximal possible
+function constrainedEEA(g, f, k::Integer)
+    @assert degree(f) >= degree(g)
+    R = parent(g)  # = K[x]
+    U = (one(R), zero(R), f)  # = (1, 0, f)
+    V = (zero(R), one(R), g)  # = (0, 1, g)
+    # in Nemo, degree(0) is -1
+    while degree(V[3]) > k
+        q = div(U[3], V[3])
+        T = U .- q .* V
+        U = V
+        V = T
+    end
+    (V[3], V[2], V[1])
 end

@@ -18,24 +18,6 @@ function Base.copy(c::Cauchy)
     Cauchy(c.ring, c.N, c.D, copy(c.dense_polynomial_interpolator))
 end
 
-# given (polynomials) g and f (|f| >= |g|),
-# computes and returns a single row from the EEA algorithm (r, t, s), 
-# such that r = t*g + s*f, |r| < k, where |r| is the maximal possible
-function constrainedEEA(g, f, k::Integer)
-    @assert degree(f) >= degree(g)
-    R = parent(g)  # = K[x]
-    U = (one(R), zero(R), f)  # = (1, 0, f)
-    V = (zero(R), one(R), g)  # = (0, 1, g)
-    # in Nemo, degree(0) is -1
-    while degree(V[3]) > k
-        q = div(U[3], V[3])
-        T = U .- q .* V
-        U = V
-        V = T
-    end
-    (V[3], V[2], V[1])
-end
-
 # refreshes the current state of the interpolator
 function Base.empty!(c::Cauchy)
     empty!(c.dense_polynomial_interpolator)
@@ -57,7 +39,7 @@ function interpolate!(c::Cauchy, xs::Vector{T}, ys::Vector{T}) where {T}
     # F is the polynomial of degree at max N + D + 1
     # that passes through interpolation points
     F = interpolate!(dpi, xs, ys)
-    modulo = prod(z - x for x in xs)
+    modulo = producttree(z, xs)
     k = c.N
     r, t, _ = constrainedEEA(F, modulo, k)
     !isunit(gcd(r, t)) && throw("Cauchy interpolation fail.")

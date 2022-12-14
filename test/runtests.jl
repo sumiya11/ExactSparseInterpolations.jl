@@ -2,6 +2,7 @@ using Test
 using TestSetExtensions
 
 using Nemo
+import Primes
 
 include("../src/ExactSparseInterpolations.jl")
 

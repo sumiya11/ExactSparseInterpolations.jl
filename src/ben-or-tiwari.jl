@@ -72,15 +72,13 @@ function starting_point(bot::BenOrTiwari{Ring,T}) where {Ring, T<:FracElem}
 end
 
 function starting_point(bot::BenOrTiwari{Ring,T}) where {Ring,T<:FinFieldElem}
-    k = base_ring(bot.ring)
-    map(k, Primes.nextprimes(2, nvars(bot.ring)))
+    distinct_generators(k, nvars(bot.ring))
 end
 
 # Returns the next point for blackbox evaluation
 function next_point!(bot::BenOrTiwari; increment=false)
     # if this is the first point in the sequence
     if iszero(bot.i)
-        # ω0 is [2, 3, 5, ..., prime_nv]
         bot.ω0 = starting_point(bot)
         bot.ω = bot.ω0
     else
@@ -91,38 +89,10 @@ function next_point!(bot::BenOrTiwari; increment=false)
     bot.ω
 end
 
-# Given an integer m and a vector of primes p = [p1,p2,..pk]
-# returns a vector [i1,i2,..,ik], s.t. m == p1^i1*p2^i2*...*pk^ik
-discrete_log(m::Nemo.fmpq, p::AbstractVector) = discrete_log(numerator(m), p)
-discrete_log(m::Nemo.fmpz, p::AbstractVector) = discrete_log(BigInt(m), p)
-
-function discrete_log(m::BigInt, p::AbstractVector)
-    d = Primes.factor(Dict, m)
-    monom = zeros(Int, length(p))
-    for (i, p) in enumerate(p)
-        p = BigInt(numerator(p))
-        if haskey(d, p)
-            monom[i] = d[p]
-        end
-    end
-    monom
-end
-
-function discrete_log(m::T, p::AbstractVector) where {T<:FinFieldElem}
-    monom = zeros(Int, length(p))
-    for (i, p_i) in enumerate(p)
-        while data(m) >= data(p_i) && iszero(mod(data(m), data(p_i)))
-            monom[i] += 1
-            m = m // p_i
-        end
-    end
-    monom
-end
-
 # 
 next!(bot::BenOrTiwari, _, v) = next!(bot, v)
 
-function next!(bot::BenOrTiwari{Ring,K,UnivRing,UnivPoly}, v::K) where {Ring,K,UnivRing,UnivPoly}
+function next!(bot::BenOrTiwari, v::K) where {K}
     R = bot.ring
     bot.i += 1
     push!(bot.vi, v)
