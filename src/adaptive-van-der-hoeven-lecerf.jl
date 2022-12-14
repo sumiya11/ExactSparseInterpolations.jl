@@ -140,7 +140,7 @@ function update!(avdhl::AdaptiveVanDerHoevenLecerf, i, results)
         normalization_factor = leading_coefficient(den)
         num = map_coefficients(c -> div(c, normalization_factor), num)
         den = map_coefficients(c -> div(c, normalization_factor), den)
-        @warn "ready!" i
+        # @warn "ready!" i
         results[i] = true, num, den
     end
     nothing
