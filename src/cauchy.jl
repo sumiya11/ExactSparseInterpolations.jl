@@ -9,7 +9,8 @@ mutable struct Cauchy{Ring, I1<:AbstractPolynomialInterpolator} <: AbstractRatio
     dense_polynomial_interpolator::I1
 end
 
-function Cauchy(ring::Ring, N::Integer, D::Integer; dense_polynomial_interpolator=Newton(ring, d=N + D + 2)) where {Ring}
+function Cauchy(ring::Ring, N::Integer, D::Integer; 
+        dense_polynomial_interpolator=Newton(ring, d=N + D + 2)) where {Ring}
     @assert N >= 0 && D >= 0 
     Cauchy(ring, N, D, dense_polynomial_interpolator)
 end

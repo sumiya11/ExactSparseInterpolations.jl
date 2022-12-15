@@ -1,5 +1,7 @@
 ESI = ExactSparseInterpolations
 
+# good prime 2 * 3 * 7 * 47 * 769 * 1193 * 4583 * 8167 * 17417
+
 @testset "Discrete logarithms" begin
     F = Nemo.GF(17)
     ord = 16

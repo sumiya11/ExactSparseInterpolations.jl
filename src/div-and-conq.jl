@@ -1,7 +1,7 @@
 
 # computes the product of all (z - x) for x in xs
 # using the tree product algorithm.
-# O(n log n) complexity, n = length(xs)
+# O(M(n)), n = length(xs)
 function producttree(z, xs)
     isempty(xs) && return one(z)
     length(xs) == 1 && return z - xs[1]
@@ -10,9 +10,12 @@ function producttree(z, xs)
     producttree(z, view(xs, 1:m)) * producttree(z, view(xs, m+1:n))
 end
 
+treeroot(tree) = tree[end][1]
 treedepth(tree) = length(tree)
 treebase(tree) = length(first(tree))
 
+# Build the tree of products of (z - x) for x in xs and returns it.
+# Leaves of the tree are (z - x) and the root is the product.
 function buildproducttree(z::T, xs) where {T}
     n = length(xs)
     npow = nextpow(2, n)
@@ -49,6 +52,10 @@ function _remindertree!(f, rtree, ptree, depth, idx)
     rtree
 end
 
+# Given a polynomial f and a product tree ptree
+# built from (z - x) for x in xs,
+# returns the vector of reminders (f mod (z - x)) for x in xs.
+# O(M(n)logn), if n = degree(f) = O(length(xs))
 function remindertree(f, ptree)
     K = base_ring(parent(f))
     rtree = zeros(K, treebase(ptree))
@@ -73,7 +80,7 @@ end
 function fastpolyinterpolate(R, xs, ys)
     z = gen(R)
     ptree = buildproducttree(z, xs)
-    m = ptree[end][1]
+    m = treeroot(ptree)
     dm = derivative(m)
     si = remindertree(dm, ptree)
     ysi = zeros(base_ring(R), length(ys))

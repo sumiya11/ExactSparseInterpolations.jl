@@ -10,6 +10,8 @@ include("generic.jl")
 
 include("discrete-log.jl")
 
+include("field-generators.jl")
+
 include("div-and-conq.jl")
 
 include("dft.jl")
@@ -23,6 +25,8 @@ include("berlekamp-massey.jl")
 include("newton.jl")
 
 include("ben-or-tiwari.jl")
+
+include("faster-ben-or-tiwari.jl")
 
 include("javadi-monagan.jl")
 
