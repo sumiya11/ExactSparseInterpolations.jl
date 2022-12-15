@@ -1,7 +1,9 @@
 
-# Interpolate polynomials in O(Mlogn)
+# Interpolate polynomials in O(M(n)logn),
+# where M(n) is the complexity of polynomial multiplication
 mutable struct FasterBenOrTiwari{Ring} <: AbstractPolynomialInterpolator
-    # multivariate polynomial ring
+    # multivariate or univariate polynomial ring
+    # (currently only univariate ones are supported)
     ring::Ring
     # the number of terms in the interpolant
     T::Int
@@ -10,7 +12,7 @@ end
 # Given (polynomials) f and g (|f| <= |g|),
 # computes and returns a single row from the EEA algorithm (r, t, s), 
 # such that r = t*f + s*g, |r| < k, where |r| is maximal possible.
-# O(TlogT), where T = max(degree(f), degree(g))
+# O(M(T)logT), where T = max(degree(f), degree(g))
 function Padé(f, g, k)
     r, t, s = fastconstrainedEEA(g, f, k)
     r, s, t
@@ -88,7 +90,7 @@ function interpolate!(fbot::FasterBenOrTiwari, blackbox)
     Rz, z = K["z"]
     sequence = Rz(ys)
     # find A/B such that A/B = sequence mod z^(2T) and degree(A) < T
-    # O(TlogT)
+    # O(M(T)logT)
     _, B, _ = Padé(sequence, z^(2T), T-1)
     @assert degree(B) == T
     # assuming this is O(T logT^k logq^m) for some k and m, 
@@ -102,7 +104,7 @@ function interpolate!(fbot::FasterBenOrTiwari, blackbox)
     monoms = map(m -> discrete_log(ω, m, PrecomputedField(K)), mi)
     # find the coefficients of the interpolant
     # by solving a T×T Vandermonde system
-    # O(TlogT)
+    # O(M(T)logT)
     coeffs = solve_transposed_vandermonde(Rz, view(mi, 1:T), view(ys, 1:T))
     Rx(coeffs, map(e -> map(Int, e), monoms))
 end
