@@ -6,12 +6,12 @@ using ExactSparseInterpolations
 F = FqNmodFiniteField(fmpz(2), 16, :z)
 R, (x,) = PolynomialRing(F, ["x",])
 
-poly = (x^10 + 5x^9 + 11x + 18)^100
+poly = (x^10 + x^9 + x + 1)^100
 f = ExactSparseInterpolations.Blackbox(poly)
 
 bot = ExactSparseInterpolations.FasterBenOrTiwari(R, length(poly))
 @time interpolated = ExactSparseInterpolations.interpolate!(bot, f)
-#  0.028222 seconds (23.46 k allocations: 758.609 KiB)
+#  0.087853 seconds (49.17 k allocations: 1.548 MiB)
 
 @assert interpolated == poly
 
