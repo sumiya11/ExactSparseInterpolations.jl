@@ -95,6 +95,15 @@ function fastconstrainedEEA(g, f, k)
     end
 end
 
+# Given (polynomials) f and g (|f| <= |g|),
+# computes and returns a single row from the EEA algorithm (r, t, s), 
+# such that r = t*f + s*g, |r| < k, where |r| is maximal possible.
+# O(M(T)logT), where T = max(degree(f), degree(g))
+function Padé(f, g, k)
+    r, t, s = fastconstrainedEEA(g, f, k)
+    r, s, t
+end
+
 function slowgcd(g, f)
     R = parent(g)  # = K[x]
     U = (one(R), zero(R), f)  # = (1, 0, f)

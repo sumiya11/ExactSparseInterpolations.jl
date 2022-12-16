@@ -1,4 +1,18 @@
 
+# Returns a random generator of the multiplicative group of field K
+function randomgenerator(K)
+    ord = BigInt(order(K) - 1)
+    factors = Primes.factor(Vector, ord)
+    g = rand(K)
+    i = 0
+    while !generates_mult_group(ord, factors, g)
+        i += 1
+        g = rand(K)
+        i > ord && error("The characteristic of the base field is too small, sorry")
+    end
+    g
+end
+
 function distinct_generators(k, n)
     ch = Int(characteristic(k))
     ord = ch - 1
@@ -19,19 +33,6 @@ function distinct_generators(k, n)
         jj >= ch && error("The characteristic of the base field is too small, sorry")
     end
     v
-end
-
-function randomgenerator(K)
-    ord = BigInt(order(K) - 1)
-    factors = Primes.factor(Vector, ord)
-    g = rand(K)
-    i = 0
-    while !generates_mult_group(ord, factors, g)
-        i += 1
-        g = rand(K)
-        i > ord && error("The characteristic of the base field is too small, sorry")
-    end
-    g
 end
 
 # Returns alphanp2, a generator of K, such that

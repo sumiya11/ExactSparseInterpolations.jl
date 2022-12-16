@@ -10,7 +10,7 @@ mutable struct PrecomputedField{Field, T, I}
 end
 
 function PrecomputedField(K::Field) where {Field}
-    ordmult = BigInt(Nemo.order(K) - 1)
+    ordmult = Int(Nemo.order(K) - 1)
     factors = collect(Primes.factor(Dict, ordmult))
     PrecomputedField(K, ordmult, factors, Nemo.degree(K))
 end

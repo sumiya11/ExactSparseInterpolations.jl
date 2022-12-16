@@ -13,10 +13,9 @@ end
 
 # returns an array of L distinct points from the given field
 function distinct_points(field, L)
-    @label S
     ans = [random_point(field) for _ in 1:L]
     allunique(ans) && return ans
-    @goto S
+    distinct_points(field, L)
 end
 
 homogenize(ring; varname="x0") = first(PolynomialRing(base_ring(ring), append!([varname], map(string, AbstractAlgebra.symbols(ring)))))

@@ -62,6 +62,41 @@ function remindertree(f, ptree)
     _remindertree!(f, rtree, ptree, treedepth(ptree) - 1, 1)
 end
 
+# Solve the system
+# | 1       1     ...     1    | | x1 |   | a1 |
+# | v1      v2    ...     vT   | | x2 |   | a2 |
+# | .       .     ...     .    | | .  | = | .  |
+# | vn^k    vn^k  ...     vn^k | | xn |   | an |
+# where k is n-1
+# O(M(n)logn)
+# Notations are taken from 
+#   "Improved Sparse Multivariate Polynomial Interpolation Algorithms",
+#   Erich Kaltofen and Lakshman Yagati
+function solve_transposed_vandermonde(Rz, vi, ai)
+    @assert length(vi) == length(ai)
+    n = length(vi)
+    z = gen(Rz)
+    # Dz = a1^z^n + a2^z^n-1 + ... + an^z
+    # O(1)
+    Dz = Nemo.shift_left(Rz(reverse(ai)), 1)
+    # Bz = (z - v1)(z - v2)...(z - vn)
+    # O(M(n))
+    ptree = buildproducttree(z, vi)
+    Bz = treeroot(ptree)
+    ∂B = derivative(Bz)
+    # αi = ∏(vi - vj) for all j ≠ i
+    # O(M(n)logn)
+    αi = remindertree(∂B, ptree)
+    # O(M(n))
+    Qn = Nemo.shift_right(Bz * Dz, n + 1)
+    # Qnvi = Qn evaluated at vi for all i
+    # O(M(n)logn)
+    Qnvi = remindertree(Qn, ptree)
+    # O(n)
+    xi = map(i -> Qnvi[i] * inv(αi[i]), 1:n)
+    xi
+end
+
 function _lagrangetree(z, ys, ptree, depth, idx)
     R = parent(z)
     if depth == 0
