@@ -84,7 +84,7 @@ function next!(c::AdaptiveCauchy, x, y)
     modulo = prod(z - x for x in c.xs)
     k = div(c.i, 2)
     c.i += 1
-    r, t, _ = constrainedEEA(F, modulo, k)
+    r, t, _ = Padé(F, modulo, k)
     prevnum, prevden = c.prevnum, c.prevden
     c.prevnum, c.prevden = degree(r), degree(t)
     !isunit(gcd(r, t)) && (return false, (one(R), one(R)))

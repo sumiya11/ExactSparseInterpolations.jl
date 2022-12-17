@@ -104,8 +104,7 @@ function interpolate!(vdhl::FasterVanDerHoevenLecerf, blackbox)
     den = interpolate!(Di, ωs[1:2*Dt], Dys[1:2*Dt])
     # @info "" num den
     #
-    xs0 = gens(R)
-    xs0 = [one(R), xs0...]
+    xs0 = [one(R), gens(R)...]
     num = evaluate(num, xs0)
     den = evaluate(den, xs0)
     # 
