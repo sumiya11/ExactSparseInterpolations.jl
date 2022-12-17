@@ -32,11 +32,15 @@ include("javadi-monagan.jl")
 
 include("cauchy.jl")
 
+include("faster-cauchy.jl")
+
 include("direct-solve-rational.jl")
 
 include("cuyt-lee.jl")
 
 include("van-der-hoeven-lecerf.jl")
+
+include("faster-van-der-hoeven-lecerf.jl")
 
 include("adaptive-van-der-hoeven-lecerf.jl")
 

@@ -29,6 +29,7 @@ mutable struct FasterBenOrTiwari{Ring} <: AbstractPolynomialInterpolator
 
     function FasterBenOrTiwari(ring::Ring, T::Integer) where {Ring}
         @assert T >= 0
+        @assert nvars(ring) == 1
         new{Ring}(ring, T)
     end
 end
@@ -151,7 +152,8 @@ function interpolate!(fbot::AbstractBenOrTiwari, xs, ys)
     # O(TlogTlogq), where q is the order of the base field
     # (note that this cost covers the case where K is not a prime field)
     # (assuming ord is smooth)
-    stats = @timed monoms = map(m -> discrete_log(ω, m, PrecomputedField(K)), mi)
+    PF = PrecomputedField(K)
+    stats = @timed monoms = map(m -> discrete_log(ω, m, PF), mi)
     push!(_runtime_benortiwari_dlog, stats.time)
     # @info "" monoms
     # find the coefficients of the interpolant

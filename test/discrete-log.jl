@@ -1,8 +1,8 @@
 ESI = ExactSparseInterpolations
 
-# good prime 2 * 3 * 7 * 47 * 769 * 1193 * 4583 * 8167 * 17417
+# good prime ? 2 * 3 * 7 * 47 * 769 * 1193 * 4583 * 8167 * 17417
 
-@testset "Discrete logarithms" begin
+@testset "Baby-step-giant-step, Pohlig Hellman" begin
     F = Nemo.GF(17)
     ord = 16
     factors = collect(Primes.factor(Dict, ord))

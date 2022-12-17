@@ -42,7 +42,7 @@ function interpolate!(c::Cauchy, xs::Vector{T}, ys::Vector{T}) where {T}
     F = interpolate!(dpi, xs, ys)
     modulo = producttree(z, xs)
     k = c.N
-    r, t, _ = constrainedEEA(F, modulo, k)
+    r, t, _ = Padé(F, modulo, k)
     !isunit(gcd(r, t)) && throw("Cauchy interpolation fail.")
     normfactor = trailing_coefficient(t)
     divexact(r, normfactor), divexact(t, normfactor)

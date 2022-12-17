@@ -25,7 +25,9 @@ function ⥣(f, k)
 end
 
 # Fast polynomial gcd.
+# Assumes the degree of r0 is greater than the degree of r1
 function fastgcd(r0, r1, k)
+    @assert degree(r0) > degree(r1)
     n0, n1 = degree(r0), degree(r1)
     if iszero(r1) || k < n0 - n1
         # returns 0 and 
@@ -77,7 +79,6 @@ function fastgcd(g, f)
     divexact(h, leading_coefficient(h))
 end
 
-
 # given (polynomials) g and f (|f| >= |g|),
 # computes and returns a single row from the EEA algorithm (r, t, s), 
 # such that r = t*g + s*f, |r| < k, where |r| is the maximal possible
@@ -99,7 +100,8 @@ end
 # computes and returns a single row from the EEA algorithm (r, t, s), 
 # such that r = t*f + s*g, |r| < k, where |r| is maximal possible.
 # O(M(T)logT), where T = max(degree(f), degree(g))
-function Padé(f, g, k)
+function Padé(f, g, k::Integer)
+    @assert degree(f) <= degree(g)
     r, t, s = fastconstrainedEEA(g, f, k)
     r, s, t
 end
@@ -122,7 +124,7 @@ end
 # computes and returns a single row from the EEA algorithm (r, t, s), 
 # such that r = t*g + s*f, |r| < k, where |r| is the maximal possible
 function constrainedEEA(g, f, k::Integer)
-    @assert degree(f) >= degree(g)
+    @assert degree(g) >= degree(f)
     R = parent(g)  # = K[x]
     U = (one(R), zero(R), f)  # = (1, 0, f)
     V = (zero(R), one(R), g)  # = (0, 1, g)

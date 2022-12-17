@@ -15,20 +15,21 @@ treedepth(tree) = length(tree)
 treebase(tree) = length(first(tree))
 
 # Build the tree of products of (z - x) for x in xs and returns it.
-# Leaves of the tree are (z - x) and the root is the product.
+# Leaves of the tree are (z - x) and the root is the product,
+# O(M(n)), n = length(xs)
 function buildproducttree(z::T, xs) where {T}
     n = length(xs)
     npow = nextpow(2, n)
     k = round(Int, log(2, npow)) + 1
     tree = Vector{Vector{T}}(undef, k)
     tree[1] = Vector{T}(undef, npow)
-    for i in 1:n
+    @inbounds for i in 1:n
         tree[1][i] = z - xs[i]
     end
-    for i in n+1:npow
+    @inbounds for i in n+1:npow
         tree[1][i] = one(z)
     end
-    for i in 2:k
+    @inbounds for i in 2:k
         nel = 2^(k-i)
         tree[i] = Vector{T}(undef, nel)
         for j in 1:nel
@@ -45,8 +46,8 @@ function _remindertree!(f, rtree, ptree, depth, idx)
         return rtree
     end
     l, r = 2*idx - 1, 2*idx
-    r0 = mod(f, ptree[depth][l])
-    r1 = mod(f, ptree[depth][r])
+    @inbounds r0 = mod(f, ptree[depth][l])
+    @inbounds r1 = mod(f, ptree[depth][r])
     _remindertree!(r0, rtree, ptree, depth - 1, l)
     _remindertree!(r1, rtree, ptree, depth - 1, r)
     rtree
@@ -62,7 +63,7 @@ function remindertree(f, ptree)
     _remindertree!(f, rtree, ptree, treedepth(ptree) - 1, 1)
 end
 
-# Solve the system
+# Solves the system
 # | 1       1     ...     1    | | x1 |   | a1 |
 # | v1      v2    ...     vT   | | x2 |   | a2 |
 # | .       .     ...     .    | | .  | = | .  |
@@ -112,15 +113,22 @@ function lagrangetree(z, ys, ptree)
     _lagrangetree(z, ys, ptree, treedepth(ptree) - 1, 1) 
 end
 
+# Returns a unique univariate polynomial f in the ring R,
+# such that f(x) = y for all (x, y) in xs, ys;
+# O(M(n)logn), where n = O(length(xs))
 function fastpolyinterpolate(R, xs, ys)
+    @assert length(xs) == length(ys)
     z = gen(R)
+    # O(M(n))
     ptree = buildproducttree(z, xs)
     m = treeroot(ptree)
     dm = derivative(m)
+    # O(M(n)logn)
     si = remindertree(dm, ptree)
-    ysi = zeros(base_ring(R), length(ys))
+    ysi = zeros(base_ring(R), nextpow(2, length(ys)))
     for i in 1:length(ys)
         ysi[i] = ys[i]*inv(si[i])
     end
+    # O(M(n)logn)
     lagrangetree(z, ysi, ptree)
 end

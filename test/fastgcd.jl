@@ -28,7 +28,7 @@ ESI = ExactSparseInterpolations
     end
 end
 
-@testset "fast EEA, Q and Zp" begin
+@testset "fast Pade, Q and Zp" begin
     for ground in [QQ, GF(2^31-1)]
         R, x = PolynomialRing(ground, "x")
         cases = [
