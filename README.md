@@ -32,9 +32,9 @@ bb = ExactSparseInterpolations.Blackbox(func)
 vdhl = ExactSparseInterpolations.FasterVanDerHoevenLecerf(R, info)
 
 # interpolate (note that this mutates vdhl object)
-@time num, den = interpolate!(vdhl, f)
+@time num, den = interpolate!(vdhl, bb)
 ## prints
-## 0.101146 seconds (131.54 k allocations: 8.196 MiB)
+## 0.067879 seconds (128.57 k allocations: 8.150 MiB)
 
 @assert num//den == func
 
