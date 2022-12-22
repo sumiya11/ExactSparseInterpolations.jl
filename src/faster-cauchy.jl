@@ -28,7 +28,7 @@ function interpolate!(c::FasterCauchy, xs::Vector{T}, ys::Vector{T}) where {T}
     # r//t ≡ F (mod (z - x1)(z - x2)...(z - xn)),
     # O(M(n)logn)
     r, t, _ = Padé(F, modulo, c.N)
-    !isunit(gcd(r, t)) && throw("Cauchy interpolation fail.")
+    #!isunit(gcd(r, t)) && throw("Cauchy interpolation fail.")
     normfactor = trailing_coefficient(t)
     divexact(r, normfactor), divexact(t, normfactor)
 end

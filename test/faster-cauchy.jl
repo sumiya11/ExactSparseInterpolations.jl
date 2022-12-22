@@ -26,6 +26,16 @@ ESI = ExactSparseInterpolations
             P, Q = ESI.interpolate!(c, xs, ys)
             @test isone(trailing_coefficient(Q))
             @test P//Q == case
+
+            # Test for the case when n and d are upper bounds
+            a, b = rand(1:10), rand(1:10)
+            n, d = a*max(0, degree(numerator(case))), b*max(0, degree(denominator(case)))
+            c = ESI.FasterCauchy(R, n, d)
+            xs = ESI.distinct_points(ground, n + d + 2)
+            ys = map(f, xs)
+            P, Q = ESI.interpolate!(c, xs, ys)
+            @test isone(trailing_coefficient(Q))
+            @test P//Q == case
         end
     end
 end

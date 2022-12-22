@@ -1,5 +1,5 @@
 
-const _random_number_bound = 2^20-1
+const _random_number_bound = 2^10-1
 
 random_point(gf::Nemo.GaloisField) = rand(gf)
 random_point(gff::Nemo.GaloisFmpzField) = rand(gff)

@@ -30,6 +30,9 @@ mutable struct FasterBenOrTiwari{Ring} <: AbstractPolynomialInterpolator
     function FasterBenOrTiwari(ring::Ring, T::Integer) where {Ring}
         @assert T >= 0
         @assert nvars(ring) == 1
+        # Check that the ground field is enough
+        K = base_ring(ring)
+        @assert (order(K) - 1) > 2T
         new{Ring}(ring, T)
     end
 end
@@ -51,7 +54,8 @@ mutable struct FasterMultivariateBenOrTiwari{Ring} <: AbstractPolynomialInterpol
         @assert length(Ds) == nvars(ring)
         Dsubs = subsdegrees(Ds)
         K = base_ring(ring)
-        Dsubs[end] >= order(K) && @warn "In Kronecker substitution the field order is too small" Dsubs order(K)
+        @assert (order(K) - 1) > 2T
+        Dsubs[end] >= order(K) && @warn "In Kronecker substitution the field order might be too small" Dsubs order(K)
         new{Ring}(ring, T, Ds, Dsubs)
     end
 end

@@ -3,6 +3,7 @@ using TestSetExtensions
 
 using Nemo
 import Primes
+import Random
 
 include("../src/ExactSparseInterpolations.jl")
 

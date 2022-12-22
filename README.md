@@ -16,36 +16,26 @@ See file `example.jl` or the simple example below:
 using ExactSparseInterpolations
 using Nemo
 
-# declare Q[x,y,z]
-R, (x, y, z) = QQ["x","y","z"]
+# declare Z[x,y,z]/<3*2^30+1>
+R, (x, y, z) = GF(3*2^30+1)["x","y","z"]
 
-# example rational function
-f = Blackbox((x^2 - 4y*z + 3)//(x*y^2 + z))
+# create an example function for interpolation
+func = (x^10 - y + z + 8)^5 // (x + 2x*y)
 
-# van Der Hoeven and Lecerf algorithm in R with numerator
-# and denominator degrees not exceeding 3 and 4 respectively
-vdhl = vanDerHoevenLecerf(R, 3, 4)
+# obtain information about degrees/terms/partial degrees of func
+info = ExactSparseInterpolations.getboundsinfo(func)
 
-i = interpolate!(vdhl, f)
-(x^2 - 4*y*z + 3, x*y^2 + z)
-```
+# wrap func into a blackbox
+bb = ExactSparseInterpolations.Blackbox(func)
 
-Note that the `vdhl` object is mutated in `interpolate!`.
+# create an interpolator, using the information of func
+vdhl = ExactSparseInterpolations.FasterVanDerHoevenLecerf(R, info)
 
-Or, over a finite field:
+# interpolate (note that this mutates vdhl object)
+@time num, den = interpolate!(vdhl, f)
+## prints
+## 0.101146 seconds (131.54 k allocations: 8.196 MiB)
 
-```julia
-# declare Z[x,y]/<2^31-1>
-R, (x, y) = GF(2^31-1)["x","y"]
-
-f = Blackbox((x - y + 8)^5 // (x + 2x*y))
-
-vdhl = vanDerHoevenLecerf(R, 5, 2)
-
-num, den = interpolate!(vdhl, f)
-
-@assert num//den == (x - y + 8)^5 // (x + 2x*y)
+@assert num//den == func
 
 ```
-
-Note that this will uncontrollably produce wrong results in the case the field characteristic $p$ is too small, $p$ should be at least $\Omega(n^d)$.

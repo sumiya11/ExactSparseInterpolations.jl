@@ -3,6 +3,7 @@ module ExactSparseInterpolations
 import AbstractAlgebra
 using Nemo
 using Primes
+import Random
 
 include("abstract.jl")
 
