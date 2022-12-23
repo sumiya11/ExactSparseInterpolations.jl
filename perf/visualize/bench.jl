@@ -27,9 +27,9 @@ function benchmark_function_vdhl(func)
 end
 
 @info "Benchmarking random functions over $ground_field"
-nterms = [2, 3]  # from 24 to 3k
-nvars = 2:1:3
-degrees = [4]
+nterms = [floor(Int, 1.5^i) for i in 5:18]  # from 7 to 1.5k
+nvars = 2:1:8
+degrees = [8, 16, 32, 64]
 coeff_range = 1:2^16
 data = Array{Float64, 3}(undef, length(nterms), length(nvars), length(degrees))
 
