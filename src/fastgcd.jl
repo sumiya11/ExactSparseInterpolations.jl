@@ -30,9 +30,6 @@ function fastgcd(r0, r1, k)
     @assert degree(r0) > degree(r1)
     n0, n1 = degree(r0), degree(r1)
     if iszero(r1) || k < n0 - n1
-        # returns 0 and 
-        # (1, 0)
-        # (0, 1)
         return zero(r0), ((one(r0), zero(r0)), (zero(r0), one(r0)))
     end
     # first recursive call
