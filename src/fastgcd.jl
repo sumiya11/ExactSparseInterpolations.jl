@@ -3,14 +3,47 @@
 # Algorithm 11.4, Modern Computer Algebra, by Gathen and Gerhard
 
 # Given matrix A and vector x, returns the matrix-vector product Ax.
-function matvec2by1(A, x)
-    (A[1][1]*x[1] + A[1][2]*x[2], A[2][1]*x[1] + A[2][2]*x[2])
+# Returns a collections of objects that are not shared (!)
+function matvec2by1(A::Tuple{V, V}, x::V) where {V<:Tuple{T, T}} where {T}
+    R = parent(x[1])
+    ans = (R(), R())
+    tmp = R()
+    ##
+    Nemo.mul!(ans[1], A[1][1], x[1])
+    Nemo.mul!(tmp, A[1][2], x[2])
+    Nemo.add!(ans[1], ans[1], tmp)
+    ##
+    Nemo.mul!(ans[2], A[2][1], x[1])
+    Nemo.mul!(tmp, A[2][2], x[2])
+    Nemo.add!(ans[2], ans[2], tmp)
+    ##
+    ans
 end
 
 # Given two matrices A and B, returns the matrix product AB.
-function matmul2by2(A, B)
-    (A[1][1]*B[1][1] + A[1][2]*B[2][1], A[1][1]*B[1][2] + A[1][2]*B[2][2]),
-    (A[2][1]*B[1][1] + A[2][2]*B[2][1], A[2][1]*B[1][2] + A[2][2]*B[2][2])
+# Returns a collections of objects that are not shared (!)
+function matmul2by2(A::Tup, B::Tup) where {Tup<:Tuple{Tuple{T, T}, Tuple{T, T}}} where {T}
+    R = parent(A[1][1])
+    ans = ((R(), R()), (R(), R()))
+    tmp = R()
+    ##
+    Nemo.mul!(ans[1][1], A[1][1], B[1][1])
+    Nemo.mul!(tmp, A[1][2], B[2][1])
+    Nemo.add!(ans[1][1], ans[1][1], tmp)
+    ##
+    Nemo.mul!(ans[1][2], A[1][1], B[1][2])
+    Nemo.mul!(tmp, A[1][2], B[2][2])
+    Nemo.add!(ans[1][2], ans[1][2], tmp)
+    ##
+    Nemo.mul!(ans[2][1], A[2][1], B[1][1])
+    Nemo.mul!(tmp, A[2][2], B[2][1])
+    Nemo.add!(ans[2][1], ans[2][1], tmp)
+    ##
+    Nemo.mul!(ans[2][2], A[2][1], B[1][2])
+    Nemo.mul!(tmp, A[2][2], B[2][2])
+    Nemo.add!(ans[2][2], ans[2][2], tmp)
+    ##
+    ans
 end
 
 # Returns f ⥣ k, given as f quo x^(n - k) 
@@ -36,7 +69,7 @@ function fastgcd(r0, r1, k)
     d = div(k, 2)
     jm1, R = fastgcd(r0 ⥣ 2d, r1 ⥣ (2d - (n0 - n1)), d)
     rjm1, rj = matvec2by1(R, (r0, r1))
-    njm1, nj = degree(rjm1), degree(rj)
+    _, nj = degree(rjm1), degree(rj)
     if iszero(rj) || k < n0 - nj
         return jm1, R
     end
@@ -51,7 +84,7 @@ function fastgcd(r0, r1, k)
     # second recursive call
     d⁺ = k - (n0 - nj)
     hmj, S = fastgcd(rj ⥣ 2d⁺, rjp1 ⥣ (2d⁺ - (nj - njp1)), d⁺)
-    Qj = ((zero(r0), one(r0)), (inv(rhojp1), -qj*inv(rhojp1)))
+    Qj = ((zero(r0), one(r0)), (parent(qj)(inv(rhojp1)), -qj*inv(rhojp1)))
     hmj + (jm1 + 1), matmul2by2(S, matmul2by2(Qj, R))
 end
 
