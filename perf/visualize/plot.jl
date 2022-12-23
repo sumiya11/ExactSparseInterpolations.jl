@@ -16,6 +16,7 @@ pretty_table(data[:, :, end],
     tf=tf_markdown,
     formatters=formatter
 )
+println()
 pretty_table(data[:, end, :], 
     row_labels=nterms, 
     header=degrees, 
@@ -43,17 +44,19 @@ p3 = plot(degrees, data[end, end, :],
     title="$(nvars[end]) vars, $(nterms[end]) terms",
     titlefont=font(10)
 );
-plot(p1, p2, p3, layout=(1,3), legend=false, size=(800, 400))
+gui()
+display(plot(p1, p2, p3, layout=(1,3), legend=false, size=(800, 400)))
 
 # plot!
+gui()
 plotlyjs()
-surface(
+display(surface(
     nvars, nterms, data[:, :, end],
     xlabel="# variables",
     ylabel="# terms",
     zlabel="Runtime (s)",
     title="Runtime of interpolation (degrees = $(degrees[end]))",
     size=(800, 600)
-)
+))
 
 
