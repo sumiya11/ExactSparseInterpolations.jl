@@ -1,13 +1,16 @@
 
+# Product of all (z - x) for x in xs[i..j] 
+function _producttree(z, xs, i, j)
+    i == j && return z - xs[i]
+    m = div(i + j, 2)
+    _producttree(z, xs, i, m) * _producttree(z, xs, m + 1, j)
+end
+
 # computes the product of all (z - x) for x in xs
 # using the tree product algorithm.
 # O(M(n)), n = length(xs)
 function producttree(z, xs)
-    isempty(xs) && return one(z)
-    length(xs) == 1 && return z - xs[1]
-    n = length(xs)
-    m = div(n, 2)
-    producttree(z, view(xs, 1:m)) * producttree(z, view(xs, m+1:n))
+    _producttree(z, xs, 1, length(xs))
 end
 
 treeroot(tree) = tree[end][1]

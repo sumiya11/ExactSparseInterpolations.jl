@@ -1,6 +1,9 @@
 ESI = ExactSparseInterpolations
 
 @testset "fast Cauchy, Q and Z/Zp" begin
+
+    Random.seed!(100)
+
     for ground in [QQ, GF(2^31-1)]
         R, z = PolynomialRing(ground, "z")
         cases = [

@@ -125,8 +125,6 @@ function interpolate!(vdhl::FasterVanDerHoevenLecerf, blackbox)
     for i in 0:2T-1
         ωi = ωs[i + 1]
         ω0 = ωi[1]
-        # stats = @timed ...
-        # push!(storage, stats.time)
         ξij[1] = random_point(K)
         # The cycle below is (D + 2)*4n*log(q)
         stats = @timed @inbounds for j in 1:Nd + Dd + 2

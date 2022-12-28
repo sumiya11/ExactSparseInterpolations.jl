@@ -100,13 +100,81 @@ function select_moduli(K, T, D)
     rs
 end
 
-function evaluate_in_cyclic_ext_1(R, blackbox, ω, ord)
+function evaluate_in_cyclic_ext_1(R, T, blackbox, ω, ord)
     x = gens(R)
     modulo = x[1]^ord - 1
     mod(blackbox(x), modulo)
 end
 
-function evaluate_in_cyclic_ext_2(R, blackbox, ω, ord)
+function nice_primes(
+        start::Integer, count::Integer;
+        smooth_threshold=100)
+    primes = Primes.nextprimes(start, count)
+    # we have a prime p, so that p - 1 = s1*s2*...*sk * c1*c2*...*ck,
+    # where s1, ..., sk are small and c1, ..., ck are large;
+    # we want to construct a number of products si*cj,
+    # such that all si*cj are pairwise coprime,
+    # and the total product is the maximal possible.
+    #
+    # Greedy: on each step, match max. si with max. cj (with multiplicities) 
+    #
+    orders = Dict()
+    for p in primes
+        factorization = Primes.factor(Dict, p - 1)
+        factorization = [base^deg for (base, deg) in factorization]
+        smooth_factors = filter(f -> f < smooth_threshold, factorization)
+        coarse_factors = filter(f -> f >= smooth_threshold, factorization)
+        sort!(smooth_factors, rev=true)
+        sort!(coarse_factors, rev=true)
+        nsmooth = length(smooth_factors)
+        ncoarse = length(coarse_factors)
+        npairs = min(nsmooth, ncoarse)
+        orders[p] = []
+        for i in 1:npairs
+            push!(orders[p], (smooth_factors[i], coarse_factors[i]))
+        end
+        for j in npairs+1:ncoarse
+            push!(orders[p], (coarse_factors[j], ))
+        end
+        if length(orders[p]) > 3
+            @warn "Interesting prime $p" orders[p]
+        end
+    end
+    orders
+end
+
+function select_moduli_2(K, T, D)
+    order(K) < T && error("Too small field")
+    if K == GF(1073754251)
+        ord = 1073754251 - 1
+        g = randomgenerator(K)
+        candidates = [
+            (g^(191), div(ord, 191)),
+            (g^(125), div(ord, 125)),
+            (g^(113), div(ord, 113)),
+            (g^(2*199), div(ord, 2*199)),
+        ]
+        return candidates
+    end
+    if K == GF(33211)
+        ord = 33211 - 1
+        g = randomgenerator(K)
+        # candidates = [
+        #     (g^(5*81), div(ord, 5*81)),
+        #     (g^(2*41), div(ord, 2*41)),
+        #     (g^(2*10), div(ord, 2*5))
+        # ]
+        candidates = [
+            (g^(81), div(ord, 81)),
+            (g^(41), div(ord, 41)),
+            (g^(2*5*41), div(ord, 2*5*41)),
+            # (g^(2*5), div(ord, )),
+        ]
+        return candidates
+    end
+end
+
+function evaluate_in_cyclic_ext_2(R, T, blackbox, ω, ord)
     ωi = [[ω^i] for i in 0:ord-1]
     @assert isone(ωi[1][1]) # && !any(isone, ωi[2:end])
     fi = map(blackbox, ωi)
@@ -114,6 +182,21 @@ function evaluate_in_cyclic_ext_2(R, blackbox, ω, ord)
     ms = map(i -> [i], filter(i -> !iszero(ci[i + 1]), 0:length(ci)-1))
     ci = map(i -> ci[i[1] + 1], ms)
     R(ci, ms)
+end
+
+function select_moduli_3(K, T, D)
+    if order(K) < 2T
+        error("Too small field")
+    end
+    randomgenerator(K)
+end
+
+function evaluate_in_cyclic_ext_3(R, T, blackbox, ω, ord)
+    @assert 2T-1 < ord
+    bot = FasterBenOrTiwari(R, T)
+    ωi = [[ω^i] for i in 0:2T-1]
+    fi = map(blackbox, ωi)
+    interpolate!(bot, ωi, fi)
 end
 
 function strictly_unique(f, arr)
@@ -134,10 +217,12 @@ function approximate_interpolate(R, T, D, blackbox)
     @assert order(K) > 2T
     # select rk, such that rk > T, prod(rk) > D,
     # order(rk) >~ T
-    rs = select_moduli(K, T, D)
+    rs = select_moduli_2(K, T, D)
+    diversification = random_point(K)
+    diversified_blackbox = x -> blackbox(diversification .* x)
     @info "" rs
     frs = map(
-        rk -> evaluate_in_cyclic_ext_2(R, blackbox, rk[1], rk[2]),
+        rk -> evaluate_in_cyclic_ext_2(R, T, diversified_blackbox, rk[1], rk[2]),
         rs
     )
     @info "" frs
@@ -161,5 +246,9 @@ function approximate_interpolate(R, T, D, blackbox)
             fstar += newmonom
         end
     end
+    if prod(x -> x[2], rs) < D
+        @warn "Beda $(D), but only $(prod(x -> x[2], rs))"
+    end
+    fstar = evaluate(fstar, gens(R) .* inv.(diversification))
     fstar
 end

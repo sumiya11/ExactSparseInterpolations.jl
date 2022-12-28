@@ -1,3 +1,5 @@
+# Sparse polynomial reconstruction using Ben-Or-Tiwari algorithm
+# with asymptotically fast components
 
 # Measure running time of each step!
 const _runtime_benortiwari_padé = Float64[]
@@ -19,12 +21,13 @@ function _runtime_benortiwari_dump()
     ans
 end
 
-# Interpolate polynomials in O(M(n)logn),
+# Interpolate polynomials in O(M(T)logT),
 # where M(n) is the complexity of polynomial multiplication
 mutable struct FasterBenOrTiwari{Ring} <: AbstractPolynomialInterpolator
     # univariate polynomial ring
     ring::Ring
-    # the number of terms in the interpolant
+    # the number of terms in the interpolant,
+    # (or the upper bound on the number of terms)
     T::Int
 
     function FasterBenOrTiwari(ring::Ring, T::Integer) where {Ring}
@@ -74,17 +77,15 @@ function subsdegrees(Ds::Vector{<:Integer})
     ans
 end
 
-subsbackward(fbot::FasterBenOrTiwari, monoms) = map(e -> map(Int, e), monoms)
-subsbackward(fmbot::FasterMultivariateBenOrTiwari, monoms::Vector{Vector{I}}) where {I} = map(m -> subsbackward(fmbot, m), monoms)
-function subsbackward(fmbot::FasterMultivariateBenOrTiwari, monom::Vector{I}) where {I}
-    @assert length(monom) == 1
-    m = monom[1]
+subsbackward(fbot::FasterBenOrTiwari, monoms) = map(e -> Int[e], monoms)
+subsbackward(fmbot::FasterMultivariateBenOrTiwari, monoms::Vector{I}) where {I} = map(m -> subsbackward(fmbot, m), monoms)
+function subsbackward(fmbot::FasterMultivariateBenOrTiwari, monom::I) where {I}
     Dsubs = fmbot.Dsubs
     n = length(Dsubs) - 1
     ans = Vector{Int}(undef, n)
     for i in n:-1:1
-        ans[i] = div(m, Dsubs[i])
-        m = m - ans[i]*Dsubs[i]
+        ans[i] = div(monom, Dsubs[i])
+        monom = monom - ans[i]*Dsubs[i]
     end
     ans
 end
@@ -145,25 +146,27 @@ function interpolate!(fbot::AbstractBenOrTiwari, xs, ys)
     stats = @timed _, B, _ = Padé(sequence, z^(2T), T - 1)
     push!(_runtime_benortiwari_padé, stats.time)
     # @info "" ω B
-    @assert degree(B) == T
+    # @assert degree(B) == T
     # assuming this is O(T logT^k logq^m) for some k and m, 
     # where q is the order of the base field
     stats = @timed mi = map(inv, Nemo.roots(B))
     push!(_runtime_benortiwari_roots, stats.time)
-    @assert length(mi) == T
+    # @assert length(mi) == T
     # @info "" mi
     # find the monomials of the interpolant,
     # O(TlogTlogq), where q is the order of the base field
     # (note that this cost covers the case where K is not a prime field)
     # (assuming ord is smooth)
-    PF = PrecomputedField(K)
-    stats = @timed monoms = map(m -> discrete_log(ω, m, PF), mi)
+    buf = DiscreteLogBuffers(PrecomputedField(K))
+    stats = @timed monoms = map(m -> discrete_log(ω[1], m, buf), mi)
     push!(_runtime_benortiwari_dlog, stats.time)
     # @info "" monoms
     # find the coefficients of the interpolant
     # by solving a T×T Vandermonde system
-    # O(M(T)logT)
-    stats = @timed coeffs = solve_transposed_vandermonde(Rz, view(mi, 1:T), view(ys, 1:T))
+    # O(M(T)logT).
+    # t is the true number of terms
+    t = min(T, length(mi))
+    stats = @timed coeffs = solve_transposed_vandermonde(Rz, view(mi, 1:t), view(ys, 1:t))
     push!(_runtime_benortiwari_vandermonde, stats.time)
     Rx(coeffs, subsbackward(fbot, monoms))
 end

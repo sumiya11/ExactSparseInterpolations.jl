@@ -1,9 +1,9 @@
 # Fast polynomial gcd algorithm.
-# The notation and step numbering is taken from
+# The notation and step numbering are taken from
 # Algorithm 11.4, Modern Computer Algebra, by Gathen and Gerhard
 
-# Given matrix A and vector x, returns the matrix-vector product Ax.
-# Returns a collections of objects that are not shared (!)
+# Given 2×2 matrix A and vector x, returns the matrix-vector product Ax.
+# Input is not modified and output is not shared.
 function matvec2by1(A::Tuple{V, V}, x::V) where {V<:Tuple{T, T}} where {T}
     R = parent(x[1])
     ans = (R(), R())
@@ -21,7 +21,7 @@ function matvec2by1(A::Tuple{V, V}, x::V) where {V<:Tuple{T, T}} where {T}
 end
 
 # Given two matrices A and B, returns the matrix product AB.
-# Returns a collections of objects that are not shared (!)
+# Input is not modified and output is not shared.
 function matmul2by2(A::Tup, B::Tup) where {Tup<:Tuple{Tuple{T, T}, Tuple{T, T}}} where {T}
     R = parent(A[1][1])
     ans = ((R(), R()), (R(), R()))
@@ -57,17 +57,43 @@ function ⥣(f, k)
     end
 end
 
+_gcd_basecase_threshold() = 2^4
+
+function _direct_eea(g, f, k)
+    @assert degree(g) >= degree(f)
+    R = parent(g)
+    V = (one(R), zero(R), g)
+    U = (zero(R), one(R), f)
+    a, b, c = R(), R(), R()
+    # in Nemo, degree(0) is -1
+    while degree(U[3]) > k
+        q = div(V[3], U[3])
+        #
+        Nemo.mul!(a, q, U[1])
+        Nemo.mul!(b, q, U[2])
+        Nemo.mul!(c, q, U[3])
+        #
+        T = V .- (a, b, c)
+        V = U
+        U = T
+    end
+    U[3], ((V[1], V[2]), (U[1], U[2]))
+end
+
 # Fast polynomial gcd.
 # Assumes the degree of r0 is greater than the degree of r1
-function fastgcd(r0, r1, k)
+function _fastgcd(r0, r1, k)
     @assert degree(r0) > degree(r1)
     n0, n1 = degree(r0), degree(r1)
     if iszero(r1) || k < n0 - n1
         return zero(r0), ((one(r0), zero(r0)), (zero(r0), one(r0)))
     end
+    if n0 < _gcd_basecase_threshold()
+        return _direct_eea(r0, r1, -(k - n0 + 1))
+    end
     # first recursive call
     d = div(k, 2)
-    jm1, R = fastgcd(r0 ⥣ 2d, r1 ⥣ (2d - (n0 - n1)), d)
+    jm1, R = _fastgcd(r0 ⥣ 2d, r1 ⥣ (2d - (n0 - n1)), d)
     rjm1, rj = matvec2by1(R, (r0, r1))
     _, nj = degree(rjm1), degree(rj)
     if iszero(rj) || k < n0 - nj
@@ -83,7 +109,7 @@ function fastgcd(r0, r1, k)
     njp1 = degree(rjp1)
     # second recursive call
     d⁺ = k - (n0 - nj)
-    hmj, S = fastgcd(rj ⥣ 2d⁺, rjp1 ⥣ (2d⁺ - (nj - njp1)), d⁺)
+    hmj, S = _fastgcd(rj ⥣ 2d⁺, rjp1 ⥣ (2d⁺ - (nj - njp1)), d⁺)
     Qj = ((zero(r0), one(r0)), (parent(qj)(inv(rhojp1)), -qj*inv(rhojp1)))
     hmj + (jm1 + 1), matmul2by2(S, matmul2by2(Qj, R))
 end
@@ -104,7 +130,7 @@ end
 function fastgcd(g, f)
     (iszero(g) || iszero(f)) && (return one(g))
     g, f = standardize(g, f)
-    _, R = fastgcd(g, f, degree(g))
+    _, R = _fastgcd(g, f, degree(g))
     h = first(matvec2by1(R, (g, f)))
     divexact(h, leading_coefficient(h))
 end
@@ -114,8 +140,7 @@ end
 # such that r = t*g + s*f, |r| < k, where |r| is the maximal possible
 function fastconstrainedEEA(g, f, k)
     @assert degree(g) > degree(f)
-    # g, f = standardize(g, f)
-    _, R = fastgcd(g, f, degree(g) - k - 1)
+    _, R = _fastgcd(g, f, degree(g) - k - 1)
     ri, rj = matvec2by1(R, (g, f))
     if degree(ri) <= k
         t, s = R[1]

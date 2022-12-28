@@ -47,6 +47,8 @@ include("adaptive-van-der-hoeven-lecerf.jl")
 
 include("v-d-h-l-gcd.jl")
 
+include("QQ-polynomials.jl")
+
 export Blackbox
 
 export BerlekampMassey

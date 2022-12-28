@@ -72,7 +72,7 @@ function starting_point(bot::BenOrTiwari{Ring,T}) where {Ring, T<:FracElem}
 end
 
 function starting_point(bot::BenOrTiwari{Ring,T}) where {Ring,T<:FinFieldElem}
-    distinct_generators(k, nvars(bot.ring))
+    distinct_generators(base_ring(bot.ring), nvars(bot.ring))
 end
 
 # Returns the next point for blackbox evaluation
