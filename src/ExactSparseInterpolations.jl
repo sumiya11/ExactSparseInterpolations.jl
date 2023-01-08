@@ -4,6 +4,7 @@ import AbstractAlgebra
 using Nemo
 using Primes
 import Random
+import Combinatorics
 
 include("abstract.jl")
 
@@ -48,6 +49,10 @@ include("adaptive-van-der-hoeven-lecerf.jl")
 include("v-d-h-l-gcd.jl")
 
 include("QQ-polynomials.jl")
+
+include("factorization_ff.jl")
+
+include("hensel.jl")
 
 export Blackbox
 
