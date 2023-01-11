@@ -10,7 +10,7 @@ function repeated_square_mod(f, n, g)
     if iseven(n)
         repeated_square_mod(ffmodg, div(n, 2), g)
     else
-        f * repeated_square_mod(ffmodg, div(n-1, 2), g)
+        mod(f * mod(repeated_square_mod(ffmodg, div(n-1, 2), g), g), g)
     end
 end
 
@@ -62,6 +62,18 @@ function equal_degree_factorization_ff(f, d)
     append!(ans1, ans2)
 end
 
+function root_finding(f)
+    R = parent(f)
+    K, x = base_ring(R), gen(R)
+    ans = Vector{elem_type(K)}()
+    q = order(K)
+    h = repeated_square_mod(x, q, f)
+    g = gcd(h - x, f)
+    isone(g) && return ans
+    factors = equal_degree_factorization_ff(g, 1)
+    map(f -> -coeff(f, 0), factors)
+end
+
 function factorization_ff(f::T) where {T}
     @assert issquarefree(f)
     R = parent(f)
@@ -90,16 +102,3 @@ function factorization_ff(f::T) where {T}
     end
     U
 end
-
-function root_finding(f)
-    R = parent(f)
-    K, x = base_ring(R), gen(R)
-    ans = Vector{elem_type(K)}()
-    q = order(K)
-    h = repeated_square_mod(x, q, f)
-    g = gcd(h - x, f)
-    isone(g) && return ans
-    factors = equal_degree_factorization_ff(g, 1)
-    map(f -> -coeff(f, 0), factors)
-end
-

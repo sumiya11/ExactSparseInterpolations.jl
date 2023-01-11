@@ -149,7 +149,7 @@ function interpolate!(fbot::AbstractBenOrTiwari, xs, ys)
     # @assert degree(B) == T
     # assuming this is O(T logT^k logq^m) for some k and m, 
     # where q is the order of the base field
-    stats = @timed mi = map(inv, Nemo.roots(B))
+    stats = @timed mi = map(inv, root_finding(B))
     push!(_runtime_benortiwari_roots, stats.time)
     # @assert length(mi) == T
     # @info "" mi

@@ -2,11 +2,11 @@
 function hensel_step(f, g, h, s, t, m)
     m2 = m^2
     e = mod(f - g*h, m2)
-    q, r = divrem(s*e, h)   # should be reduced mod m^2
+    q, r = divrem(s*e, h)   # should be later reduced mod m^2
     gstar = mod(g + t*e + q*g, m2)
     hstar = mod(h + r, m2)
     b = mod(s*gstar + t*hstar - one(s), m2)
-    c, d = divrem(s*b, hstar)  # should be reduced mod m^2
+    c, d = divrem(s*b, hstar)  # should be later reduced mod m^2
     sstar = mod(s - d, m2)
     tstar = mod(t - t*b - c*gstar, m2)
     gstar, hstar, sstar, tstar
@@ -83,9 +83,5 @@ function _bivariate_factorization_ff(f)
         s += 1
     end
     push!(G, fstar)
-end
-
-function bivariate_factorization_ff(f)
-    
 end
 

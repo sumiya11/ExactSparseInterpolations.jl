@@ -50,9 +50,11 @@ include("v-d-h-l-gcd.jl")
 
 include("QQ-polynomials.jl")
 
-include("factorization_ff.jl")
+include("univ-factor-ff.jl")
 
 include("hensel.jl")
+
+include("mult-factor-ff.jl")
 
 export Blackbox
 
