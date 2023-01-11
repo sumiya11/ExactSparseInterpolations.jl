@@ -22,7 +22,8 @@ function _multivariate_factorization_ff(P, T::Integer, D::Integer)
     # Indeed, if
     #   P = Q*R
     # as long as lc(Q)*lc(R) = 1 in K, Q and R are unique only up to a unit
-    # 
+    # For now, this problem is ignored. 
+    #
     # P is a polynomial in K[xs]
     R = parent(P)
     K, xs = base_ring(R), gens(R)
