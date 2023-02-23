@@ -4,7 +4,6 @@
 #   yi = sum_j xs[j] ω^(i*j)
 function dft(xs::Vector{T}, ω::T, r::Integer) where {T}
     n = length(xs)
-    @assert n == r
     K = parent(ω)
     ys = zeros(K, n)
     for i in 0:n-1

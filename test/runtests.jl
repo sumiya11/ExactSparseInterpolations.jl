@@ -14,4 +14,7 @@ include("../src/ExactSparseInterpolations.jl")
     @includetests ["faster-cauchy"]
     @includetests ["faster-ben-or-tiwari"]
     @includetests ["faster-van-der-hoeven-lecerf"]
+
+    @includetests ["hensel"]
+    @includetests ["bivariate-factor-ff"]
 end

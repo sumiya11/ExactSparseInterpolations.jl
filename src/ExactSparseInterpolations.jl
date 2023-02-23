@@ -4,7 +4,7 @@ import AbstractAlgebra
 using Nemo
 using Primes
 import Random
-import Combinatorics
+import Combinatorics, Permutations
 
 include("abstract.jl")
 
@@ -50,11 +50,13 @@ include("v-d-h-l-gcd.jl")
 
 include("QQ-polynomials.jl")
 
-include("univ-factor-ff.jl")
+include("univariate-factor-ff.jl")
 
 include("hensel.jl")
 
-include("mult-factor-ff.jl")
+include("bivariate-factor-ff.jl")
+
+include("multivariate-factor-ff.jl")
 
 export Blackbox
 
