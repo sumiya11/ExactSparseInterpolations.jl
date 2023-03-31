@@ -9,11 +9,12 @@ function leading_coefficient_in(f, x)
 end
 
 function content_in(f, x)
+    degree(f, x) == 0 && return one(f)
     @assert parent(f) == parent(x)
     idx_in_x = findfirst(==(x), gens(parent(f)))
     @assert !isnothing(idx_in_x)
     cont = coeff(f, [idx_in_x], [0])
-    for i in 1:degree(f, x)
+    for i in 0:degree(f, x)
         cont = gcd(cont, coeff(f, [idx_in_x], [i]))
     end
     cont
@@ -23,6 +24,15 @@ function primpart_in(f, x)
     cont = content_in(f, x)
     isone(cont) && return f
     divexact(f, cont*leading_coefficient(f))
+end
+
+function my_primpart(F)
+    xs = vars(F)
+    F_prim = F
+    for x in xs
+        F_prim = primpart_in(F_prim, x)
+    end
+    F_prim
 end
 
 # Given polynomials f, g, h ∈ K[y][x], and m ∈ K[y] such that

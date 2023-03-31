@@ -22,6 +22,7 @@ treebase(tree) = length(first(tree))
 # O(M(n)), n = length(xs)
 function buildproducttree(z::T, xs) where {T}
     n = length(xs)
+    @assert n > 0
     npow = nextpow(2, n)
     k = round(Int, log(2, npow)) + 1
     tree = Vector{Vector{T}}(undef, k)
@@ -147,7 +148,7 @@ end
 # and a list of evaluation points
 #   ωs = [(1,...,1),..,(ω1^i,...,ωn^i),..,(ω1^T,..., ωn^{T-1})]
 # Computes and returns bi = f(ωi) for ωi in ωs in O(M(T)log t) 
-function fast_multivariate_evaluate(f, ωs)
+function fast_multivariate_evaluate(R, f, ωs)
     #     |1 v1 ... v1^{T-1}|
     # V = |1 v2 ... v2^{T-1}|
     #     |     ...
@@ -161,6 +162,12 @@ function fast_multivariate_evaluate(f, ωs)
     # The product of Hankel matrix (V^T V) and a'
     # can be computed in O(M(t)), and the entries of
     # V^T V can be computed in O(M(T)log t)
-    # a = collect(coefficients(f))
-    map(ω -> evaluate(f, ω), ωs)
+    n = nvars(R)
+    K = base_ring(R)
+    Runiv, z = PolynomialRing(K, "z")
+    @assert n > 1
+    a = collect(coefficients(f))
+    # O(M(T)log t)
+    a_prime = solve_transposed_vandermonde(Runiv, ωs, a)
+     
 end

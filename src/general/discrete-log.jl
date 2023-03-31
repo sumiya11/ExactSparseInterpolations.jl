@@ -9,7 +9,7 @@ mutable struct PrecomputedField{Field}
     extensiondeg::Int
 
     function PrecomputedField(K::Field) where {Field}
-        Nemo.order(K) > typemax(Int) && @warn "The field is too large for discrete logarithms."
+        Nemo.order(K) > typemax(Int) && @warn "The field may be too large for discrete logarithms."
         ordmult = Int(Nemo.order(K) - 1)
         factors = collect(Primes.factor(Dict, ordmult))
         new{Field}(K, ordmult, factors, Nemo.degree(K))

@@ -5,58 +5,37 @@ using Nemo
 using Primes
 import Random
 import Combinatorics, Permutations
+using LinearAlgebra
 
-include("abstract.jl")
+include("general/abstract.jl")
 
-include("generic.jl")
+include("general/generic.jl")
+include("general/discrete-log.jl")
+include("general/field-generators.jl")
+include("general/div-and-conq.jl")
+include("general/blackbox.jl")
+include("general/fastgcd.jl")
+include("general/utils.jl")
 
-include("discrete-log.jl")
+include("interpolation/berlekamp-massey.jl")
+include("interpolation/dft.jl")
+include("interpolation/newton.jl")
+include("interpolation/ben-or-tiwari.jl")
+include("interpolation/faster-ben-or-tiwari.jl")
+include("interpolation/javadi-monagan.jl")
+include("interpolation/cauchy.jl")
+include("interpolation/faster-cauchy.jl")
+include("interpolation/direct-solve-rational.jl")
+include("interpolation/cuyt-lee.jl")
+include("interpolation/van-der-hoeven-lecerf.jl")
+include("interpolation/faster-van-der-hoeven-lecerf.jl")
+include("interpolation/adaptive-van-der-hoeven-lecerf.jl")
+include("interpolation/v-d-h-l-gcd.jl")
 
-include("field-generators.jl")
-
-include("div-and-conq.jl")
-
-include("dft.jl")
-
-include("blackbox.jl")
-
-include("fastgcd.jl")
-
-include("berlekamp-massey.jl")
-
-include("newton.jl")
-
-include("ben-or-tiwari.jl")
-
-include("faster-ben-or-tiwari.jl")
-
-include("javadi-monagan.jl")
-
-include("cauchy.jl")
-
-include("faster-cauchy.jl")
-
-include("direct-solve-rational.jl")
-
-include("cuyt-lee.jl")
-
-include("van-der-hoeven-lecerf.jl")
-
-include("faster-van-der-hoeven-lecerf.jl")
-
-include("adaptive-van-der-hoeven-lecerf.jl")
-
-include("v-d-h-l-gcd.jl")
-
-include("QQ-polynomials.jl")
-
-include("univariate-factor-ff.jl")
-
-include("hensel.jl")
-
-include("bivariate-factor-ff.jl")
-
-include("multivariate-factor-ff.jl")
+include("factorization/univariate-factor-ff.jl")
+include("factorization/hensel.jl")
+include("factorization/bivariate-factor-ff.jl")
+include("factorization/multivariate-factor-ff.jl")
 
 export Blackbox
 

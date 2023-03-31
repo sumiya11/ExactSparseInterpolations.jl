@@ -166,6 +166,7 @@ function interpolate!(fbot::AbstractBenOrTiwari, xs, ys)
     # O(M(T)logT).
     # t is the true number of terms
     t = min(T, length(mi))
+    iszero(t) && return zero(Rx)
     stats = @timed coeffs = solve_transposed_vandermonde(Rz, view(mi, 1:t), view(ys, 1:t))
     push!(_runtime_benortiwari_vandermonde, stats.time)
     Rx(coeffs, subsbackward(fbot, monoms))
