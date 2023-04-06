@@ -14,7 +14,7 @@ using Nemo
 K = Nemo.GF(2^62 + 135)
 R, (x1,x2,x3,x4,x5) = PolynomialRing(K, ["x$i" for i in 1:5])
 
-f = (x1 + (x2 + x3 + x4 + x5 + 1)^5)*(x1^3 + (x2*x3 + x3*x4 + x2*x4 + x1*x5)^3 + 2);
+f = (x1 + (x2 + x3 + x4 + x5 + 1)^2)*(x1^3 + (x2*x3 + x3*x4 + x2*x4 + x1*x5)^1 + 2);
 length(f)
 
 fi = ExactSparseInterpolations.top_level_factorize(
@@ -100,6 +100,29 @@ sum(benchs[:t_evaluating_coefficients])
 sum(benchs[:t_first_bivariate_factor])
 
 ##########################
+# Trailing term of degree 6
+
+K = Nemo.GF(2^62 + 135)
+R, (x1,x2,x3,x4,x5) = PolynomialRing(K, ["x$i" for i in 1:5])
+
+f = (x1 + (x2 + x3 + x4 + 1))*(x1 + (x2*x3 + x3*x4 + x3*x5 + x2*x5 + x2*x4 + x4*x5)^2);
+length(f)
+
+fi = ExactSparseInterpolations.top_level_factorize(
+    f, 
+    benchmark=true,
+    skipcontent=true
+)
+prod(fi) == f
+map(length, fi)
+
+benchs = ExactSparseInterpolations.dump_benchmarks()
+benchs[:v_main_var]
+benchs[:v_transform_degrees]
+benchs[:v_transform_trailing_term]
+benchs[:v_transform_matrices]
+
+##########################
 # Trailing term of degree 1
 
 K = Nemo.GF(2^62 + 135)
@@ -141,7 +164,7 @@ K = Nemo.GF(2^62 + 135)
 # K = Nemo.GF(fmpz(2)^120 + 451)
 R, (x1,x2,x3) = PolynomialRing(K, ["x$i" for i in 1:3])
 
-f = (x1^1 + (x2 + x3 + 1)^5)*(x1^(3) + (x2 + x3 + x2*x3 + 1)^6 + 2);
+f = (x1^13 + (x2 + x3 + 1)^5)*(x1^(3 + 13) + (x2 + x3 + x2*x3 + 1)^6 + 2);
 length(f)
 
 fi = ExactSparseInterpolations.top_level_factorize(
@@ -149,6 +172,39 @@ fi = ExactSparseInterpolations.top_level_factorize(
     benchmark=true,
     skipcontent=true
 )
+
+Ru,(t, u) = K["t","u"]
+F_sub_u = evaluate(f, [t, u, u])
+@time ExactSparseInterpolations.revealing_bivariate_factorization_ff(F_sub_u);
+
+factor(evaluate(F, [t,Ru(0)]))
+
+F = F_sub_u
+@time begin
+    R = parent(F)
+    K, (t, u) = base_ring(R), gens(R)
+    n, d = degree(F, t), degree(F, u)
+    b = ExactSparseInterpolations.leading_coefficient_in(F, t)
+    # modulo for reduction to univariate case
+    m = u
+    f = mod(F, m)
+    @assert n >= 1
+    @assert isone(gcd(f, derivative(f, t)))
+    @assert !iszero(mod(b, m))
+    Runiv, _ = K["t"] 
+    # l is the bound on the length of hensel iteration
+    l = d + 1 + degree(b, u)
+    # factor F mod m
+    # into factors f1..fr
+    funiv = to_univariate(Runiv, f)
+    factorization = Nemo.factor(funiv)
+    fiuniv = collect(keys(factorization.fac))
+    # lift the factors f1..fr via Hensel lifting
+    fi = map(f -> evaluate(f, t), fiuniv)
+    filifted = ExactSparseInterpolations.hensel_multifactor_lifting(F, fi, l, m)
+
+    Fi, Si = ExactSparseInterpolations.recombine_factors(F, filifted, m^l)
+end;
 
 res = Dict();
 benchs = ExactSparseInterpolations.dump_benchmarks()
@@ -195,6 +251,16 @@ ys_interpolation = [sum(res[x][4]) for x in xs]
 ys_mainvar = [sum(res[x][5]) for x in xs]
 ys_first_bivariate_factor = [sum(res[x][6]) for x in xs]
 
+xs0 = deepcopy(xs)
+res0 = deepcopy(res)
+
+xs = xs[1:end-2]
+ys_total = ys_total[1:end-2]
+ys_eval = ys_eval[1:end-2]
+ys_hensel = ys_hensel[1:end-2]
+ys_interpolation = ys_interpolation[1:end-2]
+ys_mainvar = ys_mainvar[1:end-2]
+ys_first_bivariate_factor = ys_first_bivariate_factor[1:end-2]
 begin
     pt = :tab10
     plo = plot(xs, ys_total, linewidth=2, label="total", palette=pt,
@@ -204,8 +270,164 @@ begin
     plot!(xs, ys_eval, linewidth=2, label="evaluating", palette=pt)
     plot!(xs, ys_hensel, linewidth=2, label="hensel lift", palette=pt)
     plot!(xs, ys_interpolation, linewidth=2, label="interpolation", palette=pt)
-    savefig(plo, "benchmark_3.pdf")
+    savefig(plo, "benchmark_4.pdf")
 end
+
+
+##########################
+
+#=
+    #4 Benchmark, varying the number of terms
+=#
+
+K = Nemo.GF(2^62 + 135)
+# K = Nemo.GF(4611686018427388319)
+# K = Nemo.GF(fmpz(2)^120 + 451)
+R, xs = PolynomialRing(K, ["x$i" for i in 1:8])
+
+xso = xs[2:end]
+f = (xs[1] + (sum(xso) + 1)^3)*(xs[1] + (prod(xso) + sum(xso)^3));
+length(f)
+
+fi = ExactSparseInterpolations.top_level_factorize(
+    f, 
+    benchmark=true,
+    skipcontent=true
+);
+length(fi)
+
+res = Dict();
+ts = []
+benchs = ExactSparseInterpolations.dump_benchmarks()
+for i in 2:8
+    K = Nemo.GF(2^62 + 135)
+    R, xs = PolynomialRing(K, ["x$i" for i in 1:8])
+
+    d1 = div(i, 2)
+    d2 = i - d1
+    xso = xs[2:end]
+    f = (xs[1] + (sum(xso) + 1)^d1)*(xs[1] + (sum(xso)^d2));
+    t = length(f)
+    push!(ts, t)
+
+    fi = ExactSparseInterpolations.top_level_factorize(
+        f, 
+        benchmark=true,
+        skipcontent=true
+    )
+    @assert prod(fi) == f "$i is bad"
+    
+    benchs = ExactSparseInterpolations.dump_benchmarks()
+
+    if length(fi) > 2 || length(fi) == 1
+        @warn "i = $i skipped"
+        continue
+    end
+
+    println("==============================")
+    show(stdout, MIME"text/plain"(), benchs)
+    println()
+
+    res[i] = (
+        benchs[:t_total], 
+        benchs[:t_evaluating_coefficients],
+        benchs[:t_many_hensel_liftings], 
+        benchs[:t_interpolation],
+        benchs[:t_select_main_variable],
+        benchs[:t_first_bivariate_factor],
+        benchs[:t_postprocessing],
+        benchs[:t_exact_division],
+    )
+end
+res
+
+using Plots
+begin
+    xs = sort(collect(keys(res)))
+    ys_total = [res[x][1][1] for x in xs]
+    ys_eval = [sum(res[x][2]) for x in xs]
+    ys_hensel = [sum(res[x][3]) for x in xs]
+    ys_interpolation = [sum(res[x][4]) for x in xs]
+    ys_mainvar = [sum(res[x][5]) for x in xs]
+    ys_first_bivariate_factor = [sum(res[x][6]) for x in xs]
+    ys_postprocessing = [sum(res[x][7]) for x in xs]
+    ys_exact_division = [sum(res[x][8]) for x in xs]
+    ys_almost_total = ys_eval .+ ys_hensel .+ ys_interpolation .+ ys_mainvar .+ ys_first_bivariate_factor .+ ys_postprocessing .+ ys_exact_division
+end
+
+begin
+    prcnt = round(Int, 100*sum(ys_almost_total) / sum(ys_total))
+    title = "8 variables, recorded $prcnt% of runtime"
+    pt = :tab10
+    plo = plot(xs, ys_total, linewidth=2, label="total", palette=pt,
+        xlabel="# terms in input", ylabel="time (s)", title=title,
+        xticks=(1:length(ts), ts))
+    plot!(xs, ys_mainvar, linewidth=2, label="find main variable", palette=pt)
+    plot!(xs, ys_first_bivariate_factor, linewidth=2, label="first bivariate factoring", palette=pt)
+    plot!(xs, ys_eval, linewidth=2, label="evaluating", palette=pt)
+    plot!(xs, ys_hensel, linewidth=2, label="hensel lift", palette=pt)
+    plot!(xs, ys_interpolation, linewidth=2, label="interpolation", palette=pt)
+    plot!(xs, ys_postprocessing, linewidth=2, label="postprocessing", palette=pt)
+    plot!(xs, ys_exact_division, linewidth=2, label="exact division", palette=pt)
+    # savefig(plo, "benchmark_4.pdf")
+end
+
+
+#=
+    #4 Benchmark, exhaustive search for a better matrix
+=#
+
+K = Nemo.GF(2^62 + 135)
+R, (x1,x2,x3,x4) = PolynomialRing(K, ["x$i" for i in 1:4])
+
+f = (x1 + (x2^2 + x3^2 + x4^2)^3)*(x1 + (x2 + x3 + x4 + 1)^3);
+monoms_no_x1 = filter(m -> degree(m, x1) == 0, collect(monomials(f)))
+length(f), minimum(total_degree, monoms_no_x1)
+filter(m -> total_degree(m) == minimum(total_degree, monoms_no_x1), (collect(monomials(f))))
+f;
+
+fi = ExactSparseInterpolations.top_level_factorize(
+    f, 
+    benchmark=true,
+    skipcontent=true,
+    monomtransform=:exhaustive
+)
+prod(fi) == f
+map(length, fi)
+
+benchs = ExactSparseInterpolations.dump_benchmarks()
+benchs[:v_main_var]
+benchs[:v_transform_degrees]
+benchs[:v_transform_trailing_term]
+benchs[:v_transform_matrices]
+benchs[:v_transform_matrices][1][2]
+benchs[:v_transform_matrices][2][2]
+benchs[:v_transform_matrices][3][2]
+
+
+K = Nemo.GF(2^62 + 135)
+R, (x1,x2,x3,x4) = PolynomialRing(K, ["x$i" for i in 1:4])
+
+f = (x1 + (x2^2 + x3 + x4)^5)*(x1 + (x2 + x3 + x4 + 1)^5);
+monoms_no_x1 = filter(m -> degree(m, x1) == 0, collect(monomials(f)))
+length(f), minimum(total_degree, monoms_no_x1)
+filter(m -> total_degree(m) == minimum(total_degree, monoms_no_x1), (collect(monomials(f))))
+f;
+
+fi = ExactSparseInterpolations.top_level_factorize(
+    f, 
+    benchmark=true,
+    skipcontent=true,
+    monomtransform=:exhaustive
+)
+prod(fi) == f
+map(length, fi)
+
+benchs = ExactSparseInterpolations.dump_benchmarks()
+benchs[:v_main_var]
+benchs[:v_transform_degrees]
+benchs[:v_transform_trailing_term]
+benchs[:v_transform_matrices]
 
 fi = ExactSparseInterpolations.top_level_factorize(
     f, 

@@ -11,6 +11,7 @@ include("../src/ExactSparseInterpolations.jl")
     @includetests ["generic", "discrete-log"]
     @includetests ["fastgcd"]
     @includetests ["div-and-conq"]
+
     @includetests ["faster-cauchy"]
     @includetests ["faster-ben-or-tiwari"]
     @includetests ["faster-van-der-hoeven-lecerf"]

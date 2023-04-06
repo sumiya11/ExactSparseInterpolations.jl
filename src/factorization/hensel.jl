@@ -14,7 +14,7 @@ function content_in(f, x)
     idx_in_x = findfirst(==(x), gens(parent(f)))
     @assert !isnothing(idx_in_x)
     cont = coeff(f, [idx_in_x], [0])
-    for i in 0:degree(f, x)
+    for i in 1:degree(f, x)
         cont = gcd(cont, coeff(f, [idx_in_x], [i]))
     end
     cont

@@ -78,10 +78,10 @@ end
 #   "Improved Sparse Multivariate Polynomial Interpolation Algorithms",
 #   Erich Kaltofen and Lakshman Yagati
 function solve_transposed_vandermonde(Rz, vi, ai)
-    @assert length(vi) == length(ai)
-    n = length(vi)
+    # @assert length(vi) == length(ai)
+    t, T = length(vi), length(ai)
     z = gen(Rz)
-    # Dz = a1^z^n + a2^z^n-1 + ... + an^z
+    # Dz = a1*z^n + a2*z^n-1 + ... + an*z
     # O(1)
     Dz = Nemo.shift_left(Rz(reverse(ai)), 1)
     # Bz = (z - v1)(z - v2)...(z - vn)
@@ -93,13 +93,55 @@ function solve_transposed_vandermonde(Rz, vi, ai)
     # O(M(n)logn)
     αi = remindertree(∂B, ptree)
     # O(M(n))
-    Qn = Nemo.shift_right(Bz * Dz, n + 1)
+    Qn = Nemo.shift_right(Bz * Dz, t + 1)
     # Qnvi = Qn evaluated at vi for all i
     # O(M(n)logn)
     Qnvi = remindertree(Qn, ptree)
     # O(n)
-    xi = map(i -> Qnvi[i] * inv(αi[i]), 1:n)
+    xi = map(i -> Qnvi[i] * inv(αi[i]), 1:t)
     xi
+end
+
+function _solve_toeplitz(R, n, x, y, b::Vector{T}) where {T}
+    t = gen(R)
+    m = t^(n + 1)
+    X, Y = x, y
+    B = R(b)
+    P = mod(reverse(X, n + 2)*reverse(B, n + 1), m)
+    Q = mod(Y*reverse(B, n + 1), m)
+    Z = mod(X*reverse(Q, n + 1) - reverse(Y, n + 2)*reverse(P, n + 1), m)
+    Z = div(Z, trailing_coefficient(X))
+    Z
+end
+
+function first_row_and_col_of_inverse(R, n::Int, a::AbstractVector)
+    K, t = base_ring(R), gen(R)
+    U0 = t^(2n + 1)
+    U1 = R(a)
+    Uj, Wj, Vj = fastconstrainedEEA(U0, U1, n)
+    # the system is singular
+    degree(Uj) < n && return false, a, a
+    @assert !iszero(trailing_coefficient(Vj))
+    x = inv(leading_coefficient(Uj))*Vj
+    U1 = reverse(U1)
+    Uj, Wj, Vj = fastconstrainedEEA(U0, U1, n)
+    y = inv(leading_coefficient(Uj))*Vj
+    return true, x, y
+    # the original algorithm includes MORE steps.
+    # We limit outselves to the easy case and implement less steps
+end
+
+#=
+    Solves the Toeplitz system
+    Ax = b
+=#
+function solve_toeplitz(R, a::Vector{T}, b::Vector{T}) where {T}
+    @assert !isempty(a) && !isempty(b)
+    n = length(b) - 1
+    @assert length(a) == 2n + 1
+    solvable, x, y = first_row_and_col_of_inverse(R, n, a)
+    @assert solvable
+    _solve_toeplitz(R, n, x, y, b)
 end
 
 function _lagrangetree(z, ys, ptree, depth, idx)
@@ -137,18 +179,23 @@ function fastpolyinterpolate(R, xs, ys)
     lagrangetree(z, ysi, ptree)
 end
 
+
 # Adapted from
 #   "Solving Systems of Non-Linear Polynomial Equations Faster"
 #   by Canny, Kaltofen, and Yagati, 1989
-#
-# Currently, another thing is implemented
+# and
+#   "Fast Solution of Toeplitz Systems of Equations and 
+#   Computation of Pade Approximants" 
+#   by Brent, Gustavson, Yun, 1980
 #
 # Given a multivariate polynomial
-#   f(x1..xn) = a1m1 + a2m2 + ... + atmt 
-# and a list of evaluation points
-#   ωs = [(1,...,1),..,(ω1^i,...,ωn^i),..,(ω1^T,..., ωn^{T-1})]
-# Computes and returns bi = f(ωi) for ωi in ωs in O(M(T)log t) 
-function fast_multivariate_evaluate(R, f, ωs)
+#   f(x1..xn) = a1m1 + a2m2 + ... + atmt, 
+# an evaluation point
+#   ω = [ω1^i,...,ωn]
+# Computes and returns b = (b1,..,bt) = (f(ω^0),..,f(ω^{t-1}))
+# O(M(t)log t) arithmetic operations in K.
+function fast_multivariate_evaluate(R, f, ω)
+# vi = mi(ω)
     #     |1 v1 ... v1^{T-1}|
     # V = |1 v2 ... v2^{T-1}|
     #     |     ...
@@ -167,7 +214,65 @@ function fast_multivariate_evaluate(R, f, ωs)
     Runiv, z = PolynomialRing(K, "z")
     @assert n > 1
     a = collect(coefficients(f))
+    t = length(a)
+
     # O(M(T)log t)
-    a_prime = solve_transposed_vandermonde(Runiv, ωs, a)
-     
+    vi = map(i -> evaluate(monomial(f, i), ω), 1:t)
+    a_prime = fastpolyinterpolate(Runiv, vi, a)
+
+    # sigmas are elementary symmetric functions of vi:
+    # sigma1 = v1 +..+ vn, 
+    # sigma2 = v1v2 + v1v2 +..,
+    # sigmat = v1v2..vt 
+    sigmai = reverse(collect(coefficients(producttree(z, vi)))[1:t])
+    Ai = vcat([zero(K) for _ in 1:2t-1], [one(K)], sigmai, [zero(K) for _ in 1:t-1])
+    wi = vcat(map(i -> (-i)*sigmai[i], 1:t), [zero(K) for _ in 1:t])
+    
+    # sj are the power sums of vi:
+    # s1 = v1 +..+ vt,
+    # s2 = v1^2 +..+ vt^2,
+    # st = v1^t +..+ vt^t
+    sj = solve_toeplitz(Runiv, Ai, wi)
+    sj = shift_left(sj, 1) + t
+
+    g = Runiv(reverse(a_prime, t))
+    res = sj*g
+    res = mod(shift_right(res, t - 1), z^t)
+
+    collect(coefficients(res))
+end
+
+# Dispatch between the three cases, t = # term in f:
+# t == T: use the algorithm directly;
+# t < T: 
+# t > T:
+function fast_multivariate_evaluate(R, f, ω, T::Integer)
+    t = length(f)
+    K = base_ring(R)
+    @assert T > 0
+    t == T && return fast_multivariate_evaluate(R, f, ω)
+    if t < T
+        return map(i -> evaluate(f, ω .^ i), 0:T-1)
+    else # t > T
+        q = div(t, T)
+        evals = map(_ -> zero(K), 1:T)
+        tms = collect(terms(f))
+        for i in 1:q
+            fi = sum(view(tms, (1 + T*(i - 1)):T*i))
+            evi = fast_multivariate_evaluate(R, fi, ω)
+            @assert length(evi) == T
+            for j in 1:T
+                evals[j] += evi[j]
+            end
+        end
+        rm = t - q*T
+        if !iszero(rm)
+            fend = sum(tms[T*q+1:end])
+            evend = fast_multivariate_evaluate(R, fend, ω, T)
+            for j in 1:T
+                evals[j] += evend[j]
+            end
+        end
+        return evals
+    end
 end

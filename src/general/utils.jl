@@ -14,7 +14,7 @@ function dump_benchmarks()
     _factorize_benchmarks[:t_many_hensel_liftings] = Float64[]
     _factorize_benchmarks[:t_total] = Float64[]
     _factorize_benchmarks[:t_prim_and_sqfree] = Float64[]
-    _factorize_benchmarks[:v_transform_degrees] = Tuple{Int, Int}[]
+    _factorize_benchmarks[:v_transform_degrees] = NamedTuple{(:before, :after), Tuple{Int64, Int64}}[]
     _factorize_benchmarks[:v_transform_matrices] = Vector{Tuple{Int, Matrix{Int}, Matrix{Int}}}()
     _factorize_benchmarks[:v_points_used] = Int[]
     ret
