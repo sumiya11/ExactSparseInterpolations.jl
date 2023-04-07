@@ -280,26 +280,28 @@ end
     #4 Benchmark, varying the number of terms
 =#
 
+using Nemo
 K = Nemo.GF(2^62 + 135)
 # K = Nemo.GF(4611686018427388319)
 # K = Nemo.GF(fmpz(2)^120 + 451)
-R, xs = PolynomialRing(K, ["x$i" for i in 1:8])
+R, xs = PolynomialRing(K, ["x$i" for i in 1:8], ordering=:degrevlex)
 
 xso = xs[2:end]
-f = (xs[1] + (sum(xso) + 1)^3)*(xs[1] + (prod(xso) + sum(xso)^3));
+f = (xs[1] + (sum(xso) + 1)^3)*(xs[1] + (sum(xso)^4));
 length(f)
 
-fi = ExactSparseInterpolations.top_level_factorize(
+@profview fi = ExactSparseInterpolations.top_level_factorize(
     f, 
     benchmark=true,
     skipcontent=true
 );
 length(fi)
+prod(fi) == f
 
 res = Dict();
 ts = []
 benchs = ExactSparseInterpolations.dump_benchmarks()
-for i in 2:8
+for i in 2:11
     K = Nemo.GF(2^62 + 135)
     R, xs = PolynomialRing(K, ["x$i" for i in 1:8])
 
@@ -329,7 +331,7 @@ for i in 2:8
     println()
 
     res[i] = (
-        benchs[:t_total], 
+        benchs[:t_total],
         benchs[:t_evaluating_coefficients],
         benchs[:t_many_hensel_liftings], 
         benchs[:t_interpolation],
@@ -337,6 +339,7 @@ for i in 2:8
         benchs[:t_first_bivariate_factor],
         benchs[:t_postprocessing],
         benchs[:t_exact_division],
+        benchs[:t_find_power_product],
     )
 end
 res
@@ -344,7 +347,7 @@ res
 using Plots
 begin
     xs = sort(collect(keys(res)))
-    ys_total = [res[x][1][1] for x in xs]
+    ys_total = [sum(res[x][1]) for x in xs]
     ys_eval = [sum(res[x][2]) for x in xs]
     ys_hensel = [sum(res[x][3]) for x in xs]
     ys_interpolation = [sum(res[x][4]) for x in xs]
@@ -352,19 +355,24 @@ begin
     ys_first_bivariate_factor = [sum(res[x][6]) for x in xs]
     ys_postprocessing = [sum(res[x][7]) for x in xs]
     ys_exact_division = [sum(res[x][8]) for x in xs]
-    ys_almost_total = ys_eval .+ ys_hensel .+ ys_interpolation .+ ys_mainvar .+ ys_first_bivariate_factor .+ ys_postprocessing .+ ys_exact_division
+    ys_find_power_product = [sum(res[x][9]) for x in xs]
+    ys_almost_total = ys_eval .+ ys_hensel .+ ys_interpolation .+ ys_mainvar .+ ys_first_bivariate_factor .+ ys_postprocessing .+ ys_exact_division .+ ys_find_power_product
 end
 
 begin
     prcnt = round(Int, 100*sum(ys_almost_total) / sum(ys_total))
     title = "8 variables, recorded $prcnt% of runtime"
     pt = :tab10
-    plo = plot(xs, ys_total, linewidth=2, label="total", palette=pt,
+    # plo = plot(xs, ys_total, linewidth=2, label="total", palette=pt,
+    #     xlabel="# terms in input", ylabel="time (s)", title=title,
+    #     xticks=(1:length(ts), ts))
+    plot(xs, ys_find_power_product, linewidth=2, 
+        label="find power product", palette=pt,
         xlabel="# terms in input", ylabel="time (s)", title=title,
         xticks=(1:length(ts), ts))
     plot!(xs, ys_mainvar, linewidth=2, label="find main variable", palette=pt)
     plot!(xs, ys_first_bivariate_factor, linewidth=2, label="first bivariate factoring", palette=pt)
-    plot!(xs, ys_eval, linewidth=2, label="evaluating", palette=pt)
+    plot!(xs, ys_eval, linewidth=2, label="evaluation", palette=pt)
     plot!(xs, ys_hensel, linewidth=2, label="hensel lift", palette=pt)
     plot!(xs, ys_interpolation, linewidth=2, label="interpolation", palette=pt)
     plot!(xs, ys_postprocessing, linewidth=2, label="postprocessing", palette=pt)
@@ -455,6 +463,54 @@ benchs[:v_transform_matrices]
 benchs[:v_main_var]
 
 factor(f)
+
+#=
+    #5 Benchmark.
+    Using many points for bivariate factorization.
+=#
+
+K = Nemo.GF(2^62 + 135)
+R, (x1,x2,x3,x4) = PolynomialRing(K, ["x$i" for i in 1:4])
+
+f = (x1^15 + (x2*x3^5 + x2*x3^5 + x2*x4^5 + 2))*(x1^13 + (x2^3 + x3^4 + x4^2 + 1));
+
+fu = evaluate(f, [x1,x2,x2,x2])
+factor(fu)
+
+fu_0 = evaluate(f, [x1,K(0),K(0),K(0)])
+length(factor(fu_0))
+fu_1 = evaluate(f, [x1,K(1),K(1),K(1)])
+length(factor(fu_1))
+fu_235 = evaluate(f, [x1,K(2),K(3),K(5)])
+length(factor(fu_235))
+fu_5 = evaluate(f, [x1,K(5),K(5),K(5)])
+factor(fu_5)
+
+for i in 1:100
+    a,b,c = rand(K),rand(K),rand(K)
+    a = b = c
+    fu_abc = evaluate(f, [x1,a*rand(K),b*rand(K),c*rand(K)])
+    @info length(factor(fu_abc))
+end
+
+# Substitute c ^ 1
+fu_0 = evaluate(f, [x1,x2,x2,x2])
+factor(fu_0)
+
+@profview fi = ExactSparseInterpolations.top_level_factorize(
+    f, 
+    benchmark=true,
+    skipcontent=true
+)
+prod(fi) == f
+map(length, fi)
+
+benchs = ExactSparseInterpolations.dump_benchmarks()
+benchs[:v_main_var]
+benchs[:v_transform_degrees]
+benchs[:v_transform_trailing_term]
+benchs[:v_transform_matrices]
+benchs[:t_first_bivariate_factor]
 
 ##########################
 

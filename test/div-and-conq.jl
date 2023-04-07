@@ -112,7 +112,7 @@ end
     T = 3
     f = x + y^2 + 3
     ω = [K(2), K(3)]
-    @test [K(5), K(14), K(88)] == ESI.fast_multivariate_evaluate(R, f, ω)
+    @test [K(5), K(14), K(88)] == ESI._fast_multivariate_evaluate(R, f, ω, T)
 
     for K in [
             GF(2^31-1), 
@@ -127,15 +127,20 @@ end
         for case in cases
             poly, ω = case.poly, case.ω
             t = length(poly)
-            evals_1 = ESI.fast_multivariate_evaluate(R, poly, ω)
+            evals_1 = ESI._fast_multivariate_evaluate(R, poly, ω, t)
             evals_true = map(i -> evaluate(poly, ω .^ i), 0:t-1)
+            @test evals_1 == evals_true
+
+            k = rand(t+1:10t)
+            evals_1 = ESI._fast_multivariate_evaluate(R, poly, ω, k)
+            evals_true = map(i -> evaluate(poly, ω .^ i), 0:k-1)
             @test evals_1 == evals_true
         end
         ω = [K(5), K(3), K(2)]
         for i in 1:100
             poly = rand(R, 1:100, 1:10)
             t = length(poly)
-            evals_1 = ESI.fast_multivariate_evaluate(R, poly, ω)
+            evals_1 = ESI._fast_multivariate_evaluate(R, poly, ω, t)
             evals_true = map(i -> evaluate(poly, ω .^ i), 0:t-1)
             @test evals_1 == evals_true
         end
@@ -144,8 +149,13 @@ end
         for i in 1:10
             poly = rand(R, 1:1000, 0:10)
             t = length(poly)
-            evals_1 = ESI.fast_multivariate_evaluate(R, poly, ω)
+            evals_1 = ESI._fast_multivariate_evaluate(R, poly, ω, t)
             evals_true = map(i -> evaluate(poly, ω .^ i), 0:t-1)
+            @test evals_1 == evals_true
+
+            k = rand(t+1:10t)
+            evals_1 = ESI._fast_multivariate_evaluate(R, poly, ω, k)
+            evals_true = map(i -> evaluate(poly, ω .^ i), 0:k-1)
             @test evals_1 == evals_true
         end
     end

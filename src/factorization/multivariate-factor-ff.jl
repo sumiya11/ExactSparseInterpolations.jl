@@ -37,18 +37,42 @@ end
 # Checks that f has a single term independent of the main variable
 # that has the smallest total degree
 function check_invariant(f, main_var_idx)
-    monoms = filter(m -> degree(m, main_var_idx) == 0, collect(terms(f)))
-    min_deg = minimum(total_degree, monoms)
-    cnt = count(m -> total_degree(m) == min_deg, monoms)
-    trailterm = monoms[findfirst(m -> degree(m, main_var_idx) == 0 && total_degree(m) == min_deg, monoms)]
-    trailcoeff, trailmonom = coeff(trailterm, 1), monomial(trailterm, 1)
-    cnt == 1, trailmonom, trailcoeff
+    ord = ordering(parent(f))
+    if ord === :degrevlex || ord === :deglex
+        ii = 0
+        while ii <= degree(f, main_var_idx)
+            f_no_x = coeff(f, [main_var_idx], [ii])
+            ii += 1
+            length(f_no_x) == 0 && continue
+            t = length(f)
+            trailterm = monomial(f_no_x, t)
+            min_deg = total_degree(trailterm)
+            trailcoeff, trailmonom = coeff(trailterm, 1), monomial(trailterm, 1)
+            flag = true
+            if t >= 2
+                flag = !(min_deg == total_degree(monomial(f_no_x, t - 1)))
+            end
+            return flag, trailmonom, trailcoeff
+        end
+    else
+        ii = 0
+        while ii <= degree(f, main_var_idx)
+            f_no_x = coeff(f, [main_var_idx], [ii])
+            ii += 1
+            length(f_no_x) == 0 && continue
+            tds = map(total_degree, monomials(f_no_x))
+            min_deg, min_idx = findmin(tds)
+            cnt = count(m -> m == min_deg, tds)
+            trailterm = term(f_no_x, min_idx)
+            trailcoeff, trailmonom = coeff(trailterm, 1), monomial(trailterm, 1)
+            return cnt == 1, trailmonom, trailcoeff
+        end
+    end
 end
 
 function transform_poly(f, transform)
     ring = parent(f)
-    monoms = collect(monomials(f))
-    newmonoms = map(m -> transform * exponent_vector(m, 1), monoms)
+    newmonoms = map(ev -> transform * ev, exponent_vectors(f))
     corner_mult = newmonoms[1]
     for nm in newmonoms
         corner_mult = map(min, corner_mult, nm)
@@ -58,18 +82,20 @@ function transform_poly(f, transform)
     ring(collect(coefficients(f)), newmonoms)
 end
 
-function next_monom_transform(transform, main_var_idx, monomtransform)
+function next_monom_transform(transform, main_var_idx, monomtransform, try_harder)
     if monomtransform === :lowerdiag_plus_minus_ones
-        generate_next_transform_1(transform, main_var_idx)
-    elseif monomtransform === :product_of_unimodular
-        generate_next_transform_2(transform, main_var_idx)
+        generate_next_transform_1(transform, main_var_idx, try_harder)
+    elseif monomtransform === :random_nonzero_entry
+        generate_next_transform_2(transform, main_var_idx, try_harder)
+    elseif monomtransform === :above_main_diagonal
+        generate_next_transform_3(transform, main_var_idx, try_harder)
     else
-        generate_next_transform_2(transform, main_var_idx)
+        generate_next_transform_2(transform, main_var_idx, try_harder)
     end
 end
 
 # Slighly change the values under the main diagonal
-function generate_next_transform_1(transform, main_var_idx)
+function generate_next_transform_1(transform, main_var_idx, try_harder)
     n = size(transform, 1)
     i, j = 1, 1
     while i == j || i == main_var_idx || j == main_var_idx
@@ -81,20 +107,59 @@ function generate_next_transform_1(transform, main_var_idx)
     transform
 end
 
-# Multiply by a unimodular matrix
-function generate_next_transform_2(transform, main_var_idx)
+# Random entry nonzero
+function generate_next_transform_2(transform, main_var_idx, try_harder)
     n = size(transform, 1)
-    i, j = 1, 1
-    while i == j || i == main_var_idx || j == main_var_idx
-        i = rand(1:n)
-        j = rand(i:n)
+    for _ in 1:5
+        i, j = 1, 1
+        while i == j || i == main_var_idx || j == main_var_idx
+            i = rand(1:n)
+            j = rand(i:n)
+        end
+        transform[i, j] = rand((1, 2))
     end
-    U = Matrix(1I, n, n)
-    if rand(Bool)
-        j, i = i, j
+    transform
+end
+
+function matrices_to_check_3(n, main_var_idx, t, other_diagonals)
+    # vcat(map(tt -> collect(Combinatorics.combinations(
+    #     [(i, i+1) for i in 1:n-1 if i != main_var_idx],
+    #     tt
+    # )), 1:t)...)
+    res = collect(Combinatorics.combinations(
+        [(i, i+1) for i in 1:n-1 if i != main_var_idx], t))
+    if length(other_diagonals) != 0
+        newres = []
+        for o in other_diagonals
+            for (j, r) in enumerate(res) 
+                append!(newres, [vcat(r, x) for x in collect(Combinatorics.combinations(
+                    [(i, i+o) for i in 1:n-o if i != main_var_idx], t-1))])
+            end
+        end
+        return newres
+    else
+        return res
     end
-    U[i, j] = 1
-    transform = transform * U
+end
+
+# Random entries above main diagonal
+function generate_next_transform_3(transform, main_var_idx, try_harder)
+    n = size(transform, 1)
+    m = if rand() < 0.85 && !try_harder
+        rand(matrices_to_check_3(n, main_var_idx, 1, []))
+    elseif rand() < 0.90 && n > 2 && !try_harder
+        rand(matrices_to_check_3(n, main_var_idx, 2, []))
+    elseif rand() < 0.95 && n > 4 && !try_harder
+        rand(matrices_to_check_3(n, main_var_idx, 3, [2]))
+    elseif n > 6
+        rand(matrices_to_check_3(n, main_var_idx, 7, [2, 3, 4]))
+    else
+        rand(matrices_to_check_3(n, main_var_idx, 2, [2]))
+    end
+    transform = Matrix(1I, n, n)
+    for (i, j) in m
+        transform[i, j] = 1
+    end
     transform
 end
 
@@ -107,7 +172,7 @@ function generate_the_best_transform!(
     s = 0
     @inbounds for i in I:n
         for j in J:n
-            for k in -5:5
+            for k in 1:2
                 (i == j || main_var_idx == i || main_var_idx == j) && continue
                 transform[i, j] = k
                 new_vars = map(var -> transform_poly(var, transform), xs)
@@ -117,9 +182,11 @@ function generate_the_best_transform!(
                     push!(all_transforms, copy(transform))
                 end
                 
-                generate_the_best_transform!(f, transform, main_var_idx, i+1, j, all_transforms)
-                generate_the_best_transform!(f, transform, main_var_idx, i, j+1, all_transforms)
-                
+                if !success
+                    generate_the_best_transform!(f, transform, main_var_idx, i+1, j, all_transforms)
+                    generate_the_best_transform!(f, transform, main_var_idx, i, j+1, all_transforms)
+                end
+
                 transform[i, j] = zero(transform[i, j])
                 
                 generate_the_best_transform!(f, transform, main_var_idx, i+1, j, all_transforms)
@@ -151,9 +218,7 @@ function generate_the_best_transform(f, main_var_idx)
             best_one = (i, total_degree(f_subs))
         end
     end
-    println(degrees)
-    println(best)
-    last(all_transforms)
+    all_transforms[best_one[1]]
 end
 
 # Returns the 
@@ -172,8 +237,12 @@ function find_power_product_substitution(f, main_var_idx, monomtransform)
     transform = Matrix(1I, n, n)
     new_vars = xs
     f_subs, trailmonom = f, f
-    _, trail_before, trail_coeff = check_invariant(f, 1)
-    k, attempts = 0, 100
+    success, trail_before, trail_coeff = check_invariant(f, main_var_idx)
+    invtransform = round.(Int, inv(transform))
+    k, attempts = 1, 2000
+    if success
+        return f_subs, new_vars, transform, invtransform, trail_before, trail_before, trail_coeff, k
+    end
     if monomtransform == :exhaustive
         transform = generate_the_best_transform(f, main_var_idx)
         new_vars = map(var -> transform_poly(var, transform), xs)
@@ -181,7 +250,7 @@ function find_power_product_substitution(f, main_var_idx, monomtransform)
         success, trailmonom, trail_coeff = check_invariant(f_subs, main_var_idx)
         @assert success
         invtransform = round.(Int, inv(transform))
-        return f_subs, new_vars, transform, invtransform, trail_before, trailmonom, k
+        return f_subs, new_vars, transform, invtransform, trail_before, trailmonom, trail_coeff, k
     end
     while k < attempts
         k += 1
@@ -191,10 +260,12 @@ function find_power_product_substitution(f, main_var_idx, monomtransform)
         success, trailmonom, trail_coeff = check_invariant(f_subs, main_var_idx)
         success && break
         # ..scramble the transform a bit
-        transform = next_monom_transform(transform, main_var_idx, monomtransform)
+        try_harder = (k / attempts) > 0.2
+        transform = next_monom_transform(transform, main_var_idx, monomtransform, try_harder)
     end
     if k == attempts
-        @warn "Max. number of attempts reached"
+        @warn "Max. number of attempts for finding a substitution is reached. An error will follow."
+        throw(DomainError("Beda!"))
     end
     # he-he
     invtransform = round.(Int, inv(transform))
@@ -217,6 +288,7 @@ function evaluate_coefficients(F_u, var_main, var_u, c::Vector{C}, T, ring_coeff
     for d in 0:degree(F_u, 1)
         for D in 0:degree(F_u, 2)
             poly_to_evaluate = coeff(F_u, [1, 2], [d, D])
+            iszero(poly_to_evaluate) && continue
             # change to n-1 variable polynomial
             poly_to_evaluate = evaluate(poly_to_evaluate, xs)
             evals = fast_multivariate_evaluate(ring_coeff, poly_to_evaluate, c, T)
@@ -516,7 +588,7 @@ function top_level_factorize(F; kws...)
     mainvar = get(kws, :mainvar, :smalldegree) # default main variable is smalldegree
     benchmark = get(kws, :benchmark, false) # default benchmark is false
     skipcontent = get(kws, :skipcontent, false) # default skipcontent is false
-    monomtransform = get(kws, :monomtransform, :lowerdiag_plus_minus_ones) # default monomtransform is lowerdiag_plus_minus_ones
+    monomtransform = get(kws, :monomtransform, :random_nonzero_entry) # default monomtransform is lowerdiag_plus_minus_ones
     interpolator = get(kws, :interpolator, :automatically) # default interpolator is automatically
     if any(key -> !(key ∈ _supported_keywords), keys(kws))
         @warn "Some keyword arguments are not not supported. Supported ones are:\n$_supported_keywords"

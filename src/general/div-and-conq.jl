@@ -194,7 +194,11 @@ end
 #   ω = [ω1^i,...,ωn]
 # Computes and returns b = (b1,..,bt) = (f(ω^0),..,f(ω^{t-1}))
 # O(M(t)log t) arithmetic operations in K.
-function fast_multivariate_evaluate(R, f, ω)
+#
+# !!! This is internal function.
+#     It assumes that the number of evaluation points T
+#     is equal to or greater than the number of monomials t.
+function _fast_multivariate_evaluate(R, f, ω, T)
 # vi = mi(ω)
     #     |1 v1 ... v1^{T-1}|
     # V = |1 v2 ... v2^{T-1}|
@@ -215,6 +219,7 @@ function fast_multivariate_evaluate(R, f, ω)
     @assert n > 1
     a = collect(coefficients(f))
     t = length(a)
+    @assert T >= T
 
     # O(M(T)log t)
     vi = map(i -> evaluate(monomial(f, i), ω), 1:t)
@@ -225,9 +230,9 @@ function fast_multivariate_evaluate(R, f, ω)
     # sigma2 = v1v2 + v1v2 +..,
     # sigmat = v1v2..vt 
     sigmai = reverse(collect(coefficients(producttree(z, vi)))[1:t])
-    Ai = vcat([zero(K) for _ in 1:2t-1], [one(K)], sigmai, [zero(K) for _ in 1:t-1])
-    wi = vcat(map(i -> (-i)*sigmai[i], 1:t), [zero(K) for _ in 1:t])
-    
+    Ai = vcat([zero(K) for _ in 1:2T-1], [one(K)], sigmai, [zero(K) for _ in 1:(2T - t - 1)])
+    wi = vcat(map(i -> (-i)*sigmai[i], 1:t), [zero(K) for _ in 1:2T - t])
+
     # sj are the power sums of vi:
     # s1 = v1 +..+ vt,
     # s2 = v1^2 +..+ vt^2,
@@ -237,7 +242,7 @@ function fast_multivariate_evaluate(R, f, ω)
 
     g = Runiv(reverse(a_prime, t))
     res = sj*g
-    res = mod(shift_right(res, t - 1), z^t)
+    res = mod(shift_right(res, t - 1), z^(T))
 
     collect(coefficients(res))
 end
@@ -250,29 +255,26 @@ function fast_multivariate_evaluate(R, f, ω, T::Integer)
     t = length(f)
     K = base_ring(R)
     @assert T > 0
-    t == T && return fast_multivariate_evaluate(R, f, ω)
-    if t < T
-        return map(i -> evaluate(f, ω .^ i), 0:T-1)
-    else # t > T
-        q = div(t, T)
-        evals = map(_ -> zero(K), 1:T)
-        tms = collect(terms(f))
-        for i in 1:q
-            fi = sum(view(tms, (1 + T*(i - 1)):T*i))
-            evi = fast_multivariate_evaluate(R, fi, ω)
-            @assert length(evi) == T
-            for j in 1:T
-                evals[j] += evi[j]
-            end
+    t <= T && return _fast_multivariate_evaluate(R, f, ω, T)
+    # here t > T
+    q = div(t, T)
+    evals = map(_ -> zero(K), 1:T)
+    tms = collect(terms(f))
+    for i in 1:q
+        fi = sum(view(tms, (1 + T*(i - 1)):T*i))
+        evi = _fast_multivariate_evaluate(R, fi, ω, T)
+        @assert length(evi) == T
+        for j in 1:T
+            evals[j] += evi[j]
         end
-        rm = t - q*T
-        if !iszero(rm)
-            fend = sum(tms[T*q+1:end])
-            evend = fast_multivariate_evaluate(R, fend, ω, T)
-            for j in 1:T
-                evals[j] += evend[j]
-            end
-        end
-        return evals
     end
+    rm = t - q*T
+    if !iszero(rm)
+        fend = sum(tms[T*q+1:end])
+        evend = _fast_multivariate_evaluate(R, fend, ω, T)
+        for j in 1:T
+            evals[j] += evend[j]
+        end
+    end
+    evals
 end
