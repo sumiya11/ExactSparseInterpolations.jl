@@ -29,23 +29,28 @@ function dump_benchmarks()
     _factorize_benchmarks[:v_tree] = Graphs.DiGraph()
     ret
 end
-function draw_graph(G, data1, data2)
+function draw_graph(to, G, data1, data2)
     nodelabel = map(last, sort(collect(values(data1)), by=first))
+    mainvars = map(last, nodelabel) 
+    nodelabel = map(first, nodelabel)
     edges = collect(Graphs.edges(G))
-    edgelabel = map(e -> data2[Graphs.src(e), Graphs.dst(e)], edges)
+    edgelabel = map(
+        e -> Symbol(data2[Graphs.src(e), Graphs.dst(e)], ",", mainvars[Graphs.dst(e)]), 
+        edges
+    )
     nodesz = 3.5*length(first(nodelabel))
     nodesize = repeat([nodesz], length(nodelabel))
     plo = GraphPlot.gplot(
         G, 
         nodelabel=nodelabel,
         edgelabel=edgelabel,
-        # layout=GraphPlot.spectral_layout,
+        layout=GraphPlot.circular_layout,
         nodesize=nodesize,
-        # edgelabeldistx=0.5, edgelabeldisty=0.5,
+        # edgelabeldistx=2, edgelabeldisty=2,
         edgelabelsize=1,
         nodelabelsize=1
         )
-    draw(PDF("tree.pdf", 16cm, 16cm), plo)
+    draw(to, plo)
     plo
 end
 dump_benchmarks()
@@ -66,9 +71,9 @@ function _savetree(key, value)
     global _factorize_benchmarks, _data_to_vertex, _edge_to_data
     status, main_var_idx, ha, f_deg, fi_degs = value
     G = _factorize_benchmarks[:v_tree]
-    v_vertex = addvertex_preserve!(G, _data_to_vertex, ha, f_deg)
+    v_vertex = addvertex_preserve!(G, _data_to_vertex, ha, (f_deg, main_var_idx))
     for (h, d) in fi_degs
-        u_vertex = addvertex_preserve!(G, _data_to_vertex, h, d)
+        u_vertex = addvertex_preserve!(G, _data_to_vertex, h, (d, main_var_idx))
         Graphs.add_edge!(G, (v_vertex, u_vertex))
         _edge_to_data[(v_vertex, u_vertex)] = status
     end

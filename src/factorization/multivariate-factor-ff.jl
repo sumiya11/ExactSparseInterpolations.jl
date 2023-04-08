@@ -404,7 +404,8 @@ function _find_some_factors(
     @assert main_var_idx != 0
     
     # Find the variable substitution that gives a normalization
-    @savetime bench :t_find_power_product F_sub, new_vars, transform, invtransform, train_before, trailmonom, trailcoeff, attempts = find_power_product_substitution(F, main_var_idx, monomtransform)
+    @savetime bench :t_find_power_product F_sub, new_vars, transform, invtransform, train_before, trailmonom, trailcoeff, attempts = find_power_product_substitution(
+        F, main_var_idx, monomtransform)
     @saveval bench :v_transform_matrices (attempts, transform, invtransform)
     @saveval bench :v_transform_degrees (before=total_degree(F), after=total_degree(F_sub))
     @saveval bench :v_transform_trailing_term (before=train_before, after=trailmonom)
@@ -437,6 +438,7 @@ function _find_some_factors(
         u_ext .* x_ext[main_var_idx:end]
     )
     F_sub_u = evaluate(F_sub, point_u)
+
     # evaluate F at (t, c1^0 u, c2^0 u, ..., cn^0 u)
     # (the first point in the sequence will be c^0).
     F_sub_u_c = evaluate_coefficients(F_sub_u, t_u, u_u, cs .^ 0)
@@ -469,7 +471,7 @@ function _find_some_factors(
     @savetime bench :t_evaluating_coefficients F_sub_u_ci = evaluate_coefficients(
         F_sub_u, t_u, u_u, cs, npoints, ring_coeff)
     @saveval bench :v_points_used length(cpoints)
-
+    
     @savetime bench :t_many_hensel_liftings for j in 1:npoints
         F_sub_u_c = F_sub_u_ci[j]
         @assert parent(F_sub_u_c) == ring_u
@@ -526,7 +528,7 @@ function _find_some_factors(
                 prep = Nemo.degree(coeffs_x[j], 1)
                 mxx = collect(monomials(coeffs_xs[j]))
                 for jj in 1:length(mxx)
-                    mns[kk+jj-1] = pushfirst!(exponent_vector(mxx[jj], 1), prep)
+                    mns[kk+jj-1] = insert!(exponent_vector(mxx[jj], 1), main_var_idx, prep)
                 end
                 cx = coeff(coeffs_x[j], 1)
                 cxx = collect(coefficients(coeffs_xs[j]))
@@ -574,7 +576,6 @@ function _factorize_recursive_prim_squarefree(
         F, mainvar, beautifuly)
     @saveval bench :v_main_var (main_var_idx=main_var_idx, degrees=map(i -> Nemo.degree(new_F, i), 1:length(gens(parent(F)))), at_u=at_u)
     
-    @info "" F new_F other_part
     Pi = Vector{typeof(F)}()
     if !isunit(other_part)
         @saveval bench :v_tree (
@@ -593,8 +594,8 @@ function _factorize_recursive_prim_squarefree(
     end
 
     T = 2
-    Pii = empty(Pi)
     @label Start
+    Pii = empty(Pi)
     while T <= ubT
         success, Pii = _find_some_factors(
             new_F, T, bench, main_var_idx, at_u, Fi_at_u, fi_at_u, monomtransform, beautifuly)
@@ -605,7 +606,7 @@ function _factorize_recursive_prim_squarefree(
     @savetime bench :t_exact_division begin
         P = prod(Pii)
         flag, Q = divides(new_F, P)  # 2. this is a heurusitic! 
-    end
+    end 
     append!(Pi, Pii)
     if flag && isunit(Q)
         return Pi
@@ -616,7 +617,7 @@ function _factorize_recursive_prim_squarefree(
     if flag
         @saveval bench :v_tree (
             :divided,
-            0,
+            main_var_idx,
             hash(new_F), 
             Nemo.degrees(new_F),
             [(hash(Q), Nemo.degrees(Q))]
