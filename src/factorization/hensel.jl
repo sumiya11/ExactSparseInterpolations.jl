@@ -2,19 +2,19 @@
 
 function leading_coefficient_in(f, x)
     @assert parent(f) == parent(x)
-    lead_deg_in_x = degree(f, x)
+    lead_deg_in_x = Nemo.degree(f, x)
     idx_in_x = findfirst(==(x), gens(parent(f)))
     @assert !isnothing(idx_in_x)
     coeff(f, [idx_in_x], [lead_deg_in_x])
 end
 
 function content_in(f, x)
-    degree(f, x) == 0 && return one(f)
+    Nemo.degree(f, x) == 0 && return one(f)
     @assert parent(f) == parent(x)
     idx_in_x = findfirst(==(x), gens(parent(f)))
     @assert !isnothing(idx_in_x)
     cont = coeff(f, [idx_in_x], [0])
-    for i in 1:degree(f, x)
+    for i in 1:Nemo.degree(f, x)
         cont = gcd(cont, coeff(f, [idx_in_x], [i]))
     end
     cont

@@ -7,6 +7,10 @@ import Random
 import Combinatorics, Permutations
 using LinearAlgebra
 
+import Graphs, GraphPlot
+import Cairo, Fontconfig
+using Compose
+
 include("general/abstract.jl")
 
 include("general/generic.jl")

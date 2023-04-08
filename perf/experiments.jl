@@ -425,11 +425,8 @@ f;
 fi = ExactSparseInterpolations.top_level_factorize(
     f, 
     benchmark=true,
-    skipcontent=true,
-    monomtransform=:exhaustive
+    skipcontent=true
 )
-prod(fi) == f
-map(length, fi)
 
 benchs = ExactSparseInterpolations.dump_benchmarks()
 benchs[:v_main_var]
@@ -466,11 +463,59 @@ factor(f)
 
 #=
     #5 Benchmark.
-    Using many points for bivariate factorization.
+    Using many points for bivariate factorization
+    + check if small degrees are better than large ones.
 =#
+
+using Nemo
 
 K = Nemo.GF(2^62 + 135)
 R, (x1,x2,x3,x4) = PolynomialRing(K, ["x$i" for i in 1:4])
+Ru, (x, u) = PolynomialRing(K, ["x","u"])
+
+f = (x1^2 + x2*x3 + x3*x4 - 1)*(x1 + 2x2)*(x1 + x2^3*x3^4 + 8)*(x1 + (x3 + 9)^2)
+factor(f)
+
+fi = ExactSparseInterpolations.top_level_factorize(
+    f, 
+    skipcontent=true,
+    benchmark=true,
+)
+prod(fi) == f
+map(length, fi)
+
+data = ExactSparseInterpolations.dump_data()
+benchs = ExactSparseInterpolations.dump_benchmarks()
+ExactSparseInterpolations.draw_graph(benchs[:v_tree], data...)
+
+benchs[:v_main_var]
+benchs[:v_tree]
+
+f = (x1 + x2 + x3)*(x1^3 + x3)*(x1*x2 + x3 + x4)
+fi = ExactSparseInterpolations.top_level_factorize(
+    f, 
+    skipcontent=true,
+    benchmark=true,
+    beautifuly=true
+)
+prod(fi) == f
+data = ExactSparseInterpolations.dump_data()
+benchs = ExactSparseInterpolations.dump_benchmarks()
+ExactSparseInterpolations.draw_graph(benchs[:v_tree], data...)
+
+
+Fi
+
+F_u_c2 = evaluate(f, [x, 2u, 3u, 5u])
+factor(F_u_c2)
+
+p = K(0)
+fi = map(f -> evaluate(f, [x, p]), Fi)
+m = u - p
+l = degree(F_u_c2, u) + 1
+filifted = ExactSparseInterpolations.hensel_multifactor_lifting(F_u_c2, fi, l, m)
+
+
 
 f = (x1^15 + (x2*x3^5 + x2*x3^5 + x2*x4^5 + 2))*(x1^13 + (x2^3 + x3^4 + x4^2 + 1));
 

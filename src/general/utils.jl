@@ -1,6 +1,15 @@
 
 const _factorize_benchmarks = Dict{Symbol, Any}()
+const _data_to_vertex = Dict()
+const _edge_to_data = Dict()
 
+function dump_data()
+    data1 = deepcopy(_data_to_vertex)
+    data2 = deepcopy(_edge_to_data)
+    empty!(_data_to_vertex)
+    empty!(_edge_to_data)
+    data1, data2
+end
 function dump_benchmarks()
     ret = deepcopy(_factorize_benchmarks)
     empty!(_factorize_benchmarks)
@@ -17,12 +26,58 @@ function dump_benchmarks()
     _factorize_benchmarks[:v_transform_degrees] = NamedTuple{(:before, :after), Tuple{Int64, Int64}}[]
     _factorize_benchmarks[:v_transform_matrices] = Vector{Tuple{Int, Matrix{Int}, Matrix{Int}}}()
     _factorize_benchmarks[:v_points_used] = Int[]
+    _factorize_benchmarks[:v_tree] = Graphs.DiGraph()
     ret
+end
+function draw_graph(G, data1, data2)
+    nodelabel = map(last, sort(collect(values(data1)), by=first))
+    edges = collect(Graphs.edges(G))
+    edgelabel = map(e -> data2[Graphs.src(e), Graphs.dst(e)], edges)
+    nodesz = 3.5*length(first(nodelabel))
+    nodesize = repeat([nodesz], length(nodelabel))
+    plo = GraphPlot.gplot(
+        G, 
+        nodelabel=nodelabel,
+        edgelabel=edgelabel,
+        # layout=GraphPlot.spectral_layout,
+        nodesize=nodesize,
+        # edgelabeldistx=0.5, edgelabeldisty=0.5,
+        edgelabelsize=1,
+        nodelabelsize=1
+        )
+    draw(PDF("tree.pdf", 16cm, 16cm), plo)
+    plo
 end
 dump_benchmarks()
 
+function addvertex_preserve!(G, data, key, additional=nothing)
+    exists = haskey(data, key)
+    if exists
+        data[key][1]
+    else
+        Graphs.add_vertex!(G)
+        v = Graphs.nv(G)
+        data[key] = (v, additional)
+        v
+    end
+end
+
+function _savetree(key, value)
+    global _factorize_benchmarks, _data_to_vertex, _edge_to_data
+    status, main_var_idx, ha, f_deg, fi_degs = value
+    G = _factorize_benchmarks[:v_tree]
+    v_vertex = addvertex_preserve!(G, _data_to_vertex, ha, f_deg)
+    for (h, d) in fi_degs
+        u_vertex = addvertex_preserve!(G, _data_to_vertex, h, d)
+        Graphs.add_edge!(G, (v_vertex, u_vertex))
+        _edge_to_data[(v_vertex, u_vertex)] = status
+    end
+    nothing
+end
+
 @noinline function _savevalue(key, value)
     global _factorize_benchmarks
+    key === :v_tree && return _savetree(key, value)
     if !haskey(_factorize_benchmarks, key)
         _factorize_benchmarks[key] = Vector{typeof(value)}(undef, 0)
     end

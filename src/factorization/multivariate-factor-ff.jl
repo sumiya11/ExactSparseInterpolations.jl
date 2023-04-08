@@ -7,31 +7,85 @@
 # (or 0, signalling that no such variable exists)
 #
 # Does n bivariate factorizations at worst
-function select_main_variable(F)
+function select_main_variable(F, mainvar, beautifuly)
     ring = parent(F)
     K, xs = base_ring(ring), gens(ring)
     biv_ring, (x, u) = PolynomialRing(K, ["x","u"])
     univ_ring, t = PolynomialRing(K, "t")
     # traverse variables in the order of increasing degree
-    var2degree = [(i, degree(F, xs[i])) for i in 1:length(xs)]
-    sort!(var2degree, by=x->x[2])
-    # Fi = Vector{elem_type(biv_ring)}(), Vector{elem_type(univ_ring)}(), Vector
-    for (i, deg) in var2degree
-        deg < 2 && continue
-        p = vcat(zeros(ring, i - 1), [xs[i]], zeros(ring, length(xs) - i))
-        lc = leading_coefficient_in(F, xs[i])
-        # F(0, .., 0, xi, 0, .., 0) is squarefree
-        iszero(evaluate(lc, p)) && continue
-        !issquarefree(to_univariate(univ_ring, evaluate(F, p))) && continue
-        # F(u, .., u, xi, u, .., u) is decomposes into > 1 factors
-        up = vcat(repeat([u], i - 1), [x], repeat([u], length(xs) - i))
-        F_u = evaluate(F, up)
-        Fi, fi, Si = revealing_bivariate_factorization_ff(F_u)
-        length(Fi) < 2 && continue
-        # 
-        return i
+    var2degree = [(i, Nemo.degree(F, xs[i])) for i in 1:length(xs)]
+    reversed = if mainvar === :smalldegree
+        false
+    elseif mainvar === :largedegree
+        true
+    else
+        @warn "Unknown option mainvar=$mainvar"
+        false
     end
-    0
+    sort!(var2degree, by=x->x[2], rev=reversed)
+    # Evaluating at (u, ..., u, t, u, ..., u)
+    # for some random u's
+    k = 9
+    u0 = zero(K)
+    us = [rand(K) for _ in 1:k]
+    other_part = one(ring)
+    for (i, _) in var2degree
+        degree(F, i) < 1 && continue
+
+        if beautifuly
+            gg = gcd(derivative(F, xs[i]), F)
+            if total_degree(gg) > 0
+                F = divexact(F, gg)
+                other_part *= gg
+            end
+        end
+
+        degree(F, i) < 2 && continue
+
+        fii = Vector{Tuple{typeof(F), Vector{typeof(t)}}}(undef, k)
+        flag = false
+        for (j, ui) in enumerate(us)
+            fii[j] = (u, [t])
+            p0 = vcat(repeat([ring(u0)], i - 1), [xs[i]], repeat([ring(u0)], length(xs) - i)) 
+            p = vcat(repeat([ring(ui)], i - 1), [xs[i]], repeat([ring(ui)], length(xs) - i))
+            lc = leading_coefficient_in(F, xs[i])
+            # F(ui, .., ui, xi, ui, .., ui) is squarefree
+            iszero(evaluate(lc, p)) && continue
+            iszero(evaluate(lc, p0)) && continue
+            !issquarefree(to_univariate(univ_ring, evaluate(F, p))) && continue
+            !issquarefree(to_univariate(univ_ring, evaluate(F, p0))) && continue
+            # F(u, .., u, xi, u, .., u) is decomposes into > 1 factors
+            up = vcat(repeat([u], i - 1), [x], repeat([u], length(xs) - i))
+            F_u = evaluate(F, up)
+            fi = reveal_univariate_factors_ff(F_u, ui)
+            flag = true
+            fii[j] = (F_u, fi)
+        end
+        !flag && continue
+        _, idx = findmin(Ff -> length(Ff[2]), fii)
+        F_u, fi = fii[idx]
+        fi = map(f -> evaluate(f, x), fi)
+        F_u = evaluate(F_u, [x, u])
+        b = leading_coefficient_in(F_u, x)
+        # modulo for reduction to univariate case
+        ui = us[idx]
+        m = u - ui
+        f = mod(F_u, m)
+        @assert isone(gcd(f, derivative(f, x)))
+        @assert !iszero(mod(b, m))
+        # l is the bound on the length of hensel iteration
+        d = Nemo.degree(F_u, u)
+        l = d + 1 + Nemo.degree(b, u)
+        filifted = hensel_multifactor_lifting(F_u, fi, l, m)
+        # recombine the factors 
+        # into true factors F1..Fk
+        Fi, Si = recombine_factors(F_u, filifted, m^l)
+        length(Fi) < 2 && continue
+        fi = map(S -> prod(fi[i] for i in S), Si)
+        #
+        return i, ui, Fi, fi, F, other_part
+    end
+    0, us[1], Vector{typeof(F)}(), Vector{typeof(F)}(), F, other_part
 end
 
 # Checks that f has a single term independent of the main variable
@@ -40,23 +94,23 @@ function check_invariant(f, main_var_idx)
     ord = ordering(parent(f))
     if ord === :degrevlex || ord === :deglex
         ii = 0
-        while ii <= degree(f, main_var_idx)
+        while ii <= Nemo.degree(f, main_var_idx)
             f_no_x = coeff(f, [main_var_idx], [ii])
             ii += 1
             length(f_no_x) == 0 && continue
             t = length(f)
             trailterm = monomial(f_no_x, t)
-            min_deg = total_degree(trailterm)
+            min_deg = total_Nemo.degree(trailterm)
             trailcoeff, trailmonom = coeff(trailterm, 1), monomial(trailterm, 1)
             flag = true
             if t >= 2
-                flag = !(min_deg == total_degree(monomial(f_no_x, t - 1)))
+                flag = !(min_deg == total_Nemo.degree(monomial(f_no_x, t - 1)))
             end
             return flag, trailmonom, trailcoeff
         end
     else
         ii = 0
-        while ii <= degree(f, main_var_idx)
+        while ii <= Nemo.degree(f, main_var_idx)
             f_no_x = coeff(f, [main_var_idx], [ii])
             ii += 1
             length(f_no_x) == 0 && continue
@@ -206,16 +260,16 @@ function generate_the_best_transform(f, main_var_idx)
     generate_the_best_transform!(f, Matrix(1I, n, n), main_var_idx, 1, 1, all_transforms)
     new_vars = map(var -> transform_poly(var, all_transforms[1]), xs)
     f_subs = evaluate(f, new_vars) 
-    best_one = (1, total_degree(f_subs))
+    best_one = (1, total_Nemo.degree(f_subs))
     degrees = Vector{Int}(undef, length(all_transforms))
     for (i, tr) in enumerate(all_transforms)
         new_vars = map(var -> transform_poly(var, tr), xs)
         f_subs = evaluate(f, new_vars) 
         success, trailmonom, trailcoeff = check_invariant(f_subs, main_var_idx)
         @assert success
-        degrees[i] = total_degree(f_subs)
-        if total_degree(f_subs) < best_one[2]
-            best_one = (i, total_degree(f_subs))
+        degrees[i] = total_Nemo.degree(f_subs)
+        if total_Nemo.degree(f_subs) < best_one[2]
+            best_one = (i, total_Nemo.degree(f_subs))
         end
     end
     all_transforms[best_one[1]]
@@ -285,8 +339,8 @@ function evaluate_coefficients(F_u, var_main, var_u, c::Vector{C}, T, ring_coeff
     xs = vcat([one(ring_coeff), one(ring_coeff)], xs)
     evaluated_polys = [Dict{Tuple{Int, Int}, elem_type(K)}() for _ in 1:T]
     # assuming t and u are the first and the second variables, resp.
-    for d in 0:degree(F_u, 1)
-        for D in 0:degree(F_u, 2)
+    for d in 0:Nemo.degree(F_u, 1)
+        for D in 0:Nemo.degree(F_u, 2)
             poly_to_evaluate = coeff(F_u, [1, 2], [d, D])
             iszero(poly_to_evaluate) && continue
             # change to n-1 variable polynomial
@@ -337,22 +391,17 @@ end
 function _find_some_factors(
             F, T::Integer,
             bench::Bool,
-            monomtransform::Symbol
+            main_var_idx,
+            at_u, Fi_at_u, fi_at_u,
+            monomtransform::Symbol,
+            beautifuly
         )
     @assert T > 0
     ring = parent(F)
     K, xs = base_ring(ring), gens(ring)
     n = length(xs)
     @assert characteristic(K) > 0
-
-    # Select the main variable
-    @savetime bench :t_select_main_variable main_var_idx = select_main_variable(F)
-    @saveval bench :v_main_var (main_var_idx=main_var_idx, degrees=map(i -> degree(F, i), 1:n))
-    # @info "Main variable" main_var_idx F T
-    # No good main variable has been found
-    if main_var_idx == 0
-        return false, F
-    end
+    @assert main_var_idx != 0
     
     # Find the variable substitution that gives a normalization
     @savetime bench :t_find_power_product F_sub, new_vars, transform, invtransform, train_before, trailmonom, trailcoeff, attempts = find_power_product_substitution(F, main_var_idx, monomtransform)
@@ -364,9 +413,9 @@ function _find_some_factors(
     trailmonom = trailmonom
 
     # @info "Transforms"  transform invtransform
-    d_main, D_total = degree(F, main_var_idx), total_degree(F)
+    d_main, D_total = Nemo.degree(F, main_var_idx), total_degree(F)
     # @info "Degrees before subst.:" d_main D_total
-    d_main, D_total = degree(F_sub, main_var_idx), total_degree(F_sub)
+    d_main, D_total = Nemo.degree(F_sub, main_var_idx), total_degree(F_sub)
     # @info "Degrees after subst.:" d_main D_total
 
     # Initialize the interpolation routine
@@ -374,7 +423,7 @@ function _find_some_factors(
     ring_coeff, _ = PolynomialRing(K, ["y$i" for i in 2:n])
     ring_u, (t_u, u_u) = PolynomialRing(K, ["t", "u"])
     ring_ext, (t_ext, u_ext, x_ext...) = PolynomialRing(K, vcat(["t", "u"], ["y$i" for i in 2:n]))
-    partial_degrees = [degree(F_sub, i) + degree(trailmonom, i) for i in 1:n if i != main_var_idx]
+    partial_degrees = [Nemo.degree(F_sub, i) + Nemo.degree(trailmonom, i) for i in 1:n if i != main_var_idx]
     interpolator = FasterMultivariateBenOrTiwari(ring_coeff, T, partial_degrees)
     # cs = [c2...cn] is an element of K^(n-1), which will be the starting
     # point of the geometric sequence as requested by the interpolator
@@ -401,29 +450,34 @@ function _find_some_factors(
     #   F_c = prod_i Fi
     #   F_c(t, u) = f1(t)*...*fk(t)  mod(u) 
     #   Fi(t, u) = prod_i f_i(t)  mod(u), i in Si
-    @savetime bench :t_first_bivariate_factor Fi, fi, Si = revealing_bivariate_factorization_ff(F_sub_u_c)
+    # @savetime bench :t_first_bivariate_factor Fi, fi = revealing_bivariate_factorization_ff(
+    #     F_sub_u_c)
     # @info "Revealing factorization" Fi fi Si typeof(Fi) typeof(fi)
-    Fi = normalize_factorization(Fi, trail)
+    # Fi = normalize_factorization(Fi, trail)
+    
+    fi = map(f -> evaluate(f, [t_u, zero(ring_u)]), Fi_at_u)
+    Fi = map(f -> evaluate(f, [t_u, u_u]), Fi_at_u)
 
     # The storages to collect the coefficients of factors 
     # for different evaluation points.
     # Initialize storages and fill the values for the first evaluation point.
     Fcoeffs = Vector{Vector{Vector{elem_type(K)}}}(undef, length(Fi))
-    fill_coeff_evaluations!(Fcoeffs, Fi, 1, npoints)
+    # fill_coeff_evaluations!(Fcoeffs, Fi, 1, npoints)
     
     # Evaluate another 2T - 1 times
     cpoints = map(i -> cs .^ i, 0:npoints-1)
-    @savetime bench :t_evaluating_coefficients F_sub_u_ci = evaluate_coefficients(F_sub_u, t_u, u_u, cs, npoints, ring_coeff)
+    @savetime bench :t_evaluating_coefficients F_sub_u_ci = evaluate_coefficients(
+        F_sub_u, t_u, u_u, cs, npoints, ring_coeff)
     @saveval bench :v_points_used length(cpoints)
 
-    @savetime bench :t_many_hensel_liftings for j in 2:npoints
+    @savetime bench :t_many_hensel_liftings for j in 1:npoints
         F_sub_u_c = F_sub_u_ci[j]
         @assert parent(F_sub_u_c) == ring_u
         # Here, all of these factorizations should benefit from the fact
         # that we already know correct in univariate factorization
         # and the corresponding recombination pattern.
         # We just need to hensel lift to F_c(t, u) mod <u^D>
-        Fi = bivariate_factorization_ff_with_known_univariate(F_sub_u_c, fi, Si)
+        Fi = bivariate_factorization_ff_with_known_univariate(F_sub_u_c, fi)
         trail = evaluate(trailmonom, vcat([one(K)], cpoints[j]))
 
         Fi = normalize_factorization(Fi, trail)
@@ -438,7 +492,7 @@ function _find_some_factors(
             coeffs_interpolated[i][j] = interpolate!(interpolator, cpoints, Fcoeffs[i][j])
         end
     end
-    
+        
     # @info "Interpolated coeffs" coeffs_interpolated
     # Select only factors which have less than a half of the coefficients present.
     # This means that 
@@ -458,6 +512,7 @@ function _find_some_factors(
     # Collect the interpolated coefficients into a polynomial.
     Fmonoms = map(collect ∘ monomials, Fi)
     Finterpolated = Vector{elem_type(ring)}(undef, length(good_factors))
+
     @savetime bench :t_postprocessing begin
         for (idx, i) in enumerate(good_factors)
             coeffs_x = Fmonoms[i]
@@ -468,7 +523,7 @@ function _find_some_factors(
             kk = 1
             for j in 1:length(coeffs_xs)
                 NNj = length(coeffs_xs[j])
-                prep = degree(coeffs_x[j], 1)
+                prep = Nemo.degree(coeffs_x[j], 1)
                 mxx = collect(monomials(coeffs_xs[j]))
                 for jj in 1:length(mxx)
                     mns[kk+jj-1] = pushfirst!(exponent_vector(mxx[jj], 1), prep)
@@ -482,49 +537,102 @@ function _find_some_factors(
             end
             Finterpolated[idx] = ring(cfs, mns)
         end
+
         # @info "after unify" Finterpolated
         # perform backwards substitution
         Finterpolated = map(f -> transform_poly(f, invtransform), Finterpolated)
+
         # @info "after inv subst" Finterpolated
         # divide out the content in the main variable
         Finterpolated = map(f -> divexact(f, content_in(f, xs[main_var_idx])), Finterpolated)
+        
         # @info "after remove content" Finterpolated
         # normalize by the constant leading coefficient
         Finterpolated = map(f -> divexact(f, leading_coefficient(f)), Finterpolated)
     end
 
+    @saveval bench :v_tree (
+        :interpolated, 
+        main_var_idx,
+        hash(F), 
+        Nemo.degrees(F), 
+        map(f -> (hash(f), Nemo.degrees(f)), Finterpolated)
+    )
+
     true, Finterpolated
 end
 
 function _factorize_recursive_prim_squarefree(
-        F, bench, monomtransform; 
+        F, bench, mainvar, monomtransform, beautifuly; 
         ubT=2length(F))  # 1. this is a heurusitic!
     @assert ubT > 0
     @assert bench
+    success = false
+
+    # Select the main variable
+    @savetime bench :t_select_main_variable main_var_idx, at_u, Fi_at_u, fi_at_u, new_F, other_part = select_main_variable(
+        F, mainvar, beautifuly)
+    @saveval bench :v_main_var (main_var_idx=main_var_idx, degrees=map(i -> Nemo.degree(new_F, i), 1:length(gens(parent(F)))), at_u=at_u)
+    
+    @info "" F new_F other_part
+    Pi = Vector{typeof(F)}()
+    if !isunit(other_part)
+        @saveval bench :v_tree (
+            :content, 
+            main_var_idx,
+            hash(F), 
+            Nemo.degrees(F), 
+            map(f -> (hash(f), Nemo.degrees(f)), [new_F, other_part])
+        )
+        other_factors = _factorize_recursive_prim_squarefree(
+            other_part, bench, mainvar, monomtransform, beautifuly)
+        append!(Pi, other_factors)
+    end
+    if main_var_idx == 0
+        return vcat([new_F], Pi)
+    end
+
     T = 2
-    success, Pi = false, [F]
+    Pii = empty(Pi)
     @label Start
     while T <= ubT
-        success, Pi = _find_some_factors(F, T, bench, monomtransform)
+        success, Pii = _find_some_factors(
+            new_F, T, bench, main_var_idx, at_u, Fi_at_u, fi_at_u, monomtransform, beautifuly)
         T = 2*T
         success && break
     end
-    !success && return [F]
+    !success && return Pi
     @savetime bench :t_exact_division begin
-        P = prod(Pi)
-        flag, Q = divides(F, P)  # 2. this is a heurusitic! 
+        P = prod(Pii)
+        flag, Q = divides(new_F, P)  # 2. this is a heurusitic! 
     end
-    flag && isunit(Q) && return Pi
-    !flag && @goto Start
-    Qi = _factorize_recursive_prim_squarefree(
-        Q, bench, monomtransform, ubT=ubT)
-    return vcat(Pi, Qi)
+    append!(Pi, Pii)
+    if flag && isunit(Q)
+        return Pi
+    end
+    if !flag && T <= ubT
+        @goto Start
+    end
+    if flag
+        @saveval bench :v_tree (
+            :divided,
+            0,
+            hash(new_F), 
+            Nemo.degrees(new_F),
+            [(hash(Q), Nemo.degrees(Q))]
+        )
+        Qi = _factorize_recursive_prim_squarefree(
+            Q, bench, mainvar, monomtransform, beautifuly)
+        append!(Pi, Qi)
+    end
+    Pi
 end
 
 function _factorize(
         F, 
         strategy, normalization, mainvar, bench, 
-        skipcontent, monomtransform, interpolator)
+        skipcontent, monomtransform, interpolator,
+        beautifuly)
     # We assume F is squarefree --
     # there is no squarefree factorization implemented :^(
     
@@ -538,9 +646,11 @@ function _factorize(
 
     # Factor the primitive part.
     if strategy === :recursive
-        Fi = _factorize_recursive_prim_squarefree(F_prim, bench, monomtransform)
+        Fi = _factorize_recursive_prim_squarefree(
+            F_prim, bench, mainvar, monomtransform, beautifuly)
     else
-        Fi = _factorize_recursive_prim_squarefree(F_prim, bench, monomtransform)
+        Fi = _factorize_recursive_prim_squarefree(
+            F_prim, bench, mainvar, monomtransform, beautifuly)
     end
     
     # Factor the content.
@@ -550,7 +660,8 @@ function _factorize(
             if !isone(cont)
                 Fj = _factorize(
                     cont, strategy, normalization, mainvar, 
-                    bench, skipcontent, monomtransform, interpolator)
+                    bench, skipcontent, monomtransform, interpolator,
+                    beautifuly)
                 append!(Fi, Fj)
             end
         end
@@ -564,7 +675,8 @@ end
 
 _supported_keywords = [
     :strategy, :normalization, :mainvar, :benchmark,
-    :skipcontent, :monomtransform, :interpolator
+    :skipcontent, :monomtransform, :interpolator,
+    :beautifuly
 ]
 
 # Top level factorization.
@@ -576,10 +688,12 @@ _supported_keywords = [
 #   with the increasing density.
 #   `:product_of_unimodular` will generate matrices which are products of simple 
 #   unimodular upper and lower triangular matrices. 
-# - `mainvar`, either `:random`, or `:smalldegree`, or `:bigdegree`,
+# - `mainvar`, either `:random`, or `:smalldegree`, or `:largedegree`,
 # - `benchmark`, either `true` or `false`,
 # - `skipcontent`, either `true` or `false`:
 #   use `true` if you know that the content is 1.
+# - `beautifuly`, either `true` or `false`:
+#   use `true` to remove square factors and content when testing for a new variable.
 # - `interpolator`, possible options are
 #   `:automatically`, `:kron_benortiwari`, :`prime_benortiwari`
 function top_level_factorize(F; kws...)
@@ -590,12 +704,13 @@ function top_level_factorize(F; kws...)
     skipcontent = get(kws, :skipcontent, false) # default skipcontent is false
     monomtransform = get(kws, :monomtransform, :random_nonzero_entry) # default monomtransform is lowerdiag_plus_minus_ones
     interpolator = get(kws, :interpolator, :automatically) # default interpolator is automatically
+    beautifuly = get(kws, :beautifuly, true) #
     if any(key -> !(key ∈ _supported_keywords), keys(kws))
         @warn "Some keyword arguments are not not supported. Supported ones are:\n$_supported_keywords"
     end
     @savetime benchmark :t_total Fi = _factorize(
         F, strategy, normalization, mainvar, benchmark,
-        skipcontent, monomtransform, interpolator
+        skipcontent, monomtransform, interpolator, beautifuly
     )
     Fi
 end
