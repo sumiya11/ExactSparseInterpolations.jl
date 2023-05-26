@@ -27,10 +27,10 @@ ESI = ExactSparseInterpolations
         else
             F2, true_Fi2 = F, true_Fi
         end
-        Fi, fi, Si = ESI.revealing_bivariate_factorization_ff(F)
+        Fi, fi = ESI.revealing_bivariate_factorization_ff(F)
         @test all(in(Fi), true_Fi) && all(in(true_Fi), Fi)
-        @test Fi == ESI.bivariate_factorization_ff_with_known_univariate(F, fi, Si)
-        Fi22 = ESI.bivariate_factorization_ff_with_known_univariate(F2, fi, Si)
+        @test Fi == ESI.bivariate_factorization_ff_with_known_univariate(F, fi)
+        Fi22 = ESI.bivariate_factorization_ff_with_known_univariate(F2, fi)
         @test all(in(Fi22), true_Fi2) && all(in(true_Fi2), Fi22)
     end
 end

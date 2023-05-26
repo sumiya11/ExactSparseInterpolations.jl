@@ -568,7 +568,7 @@ function _factorize_recursive_prim_squarefree(
         F, bench, mainvar, monomtransform, beautifuly; 
         ubT=2length(F))  # 1. this is a heurusitic!
     @assert ubT > 0
-    @assert bench
+    # @assert bench
     success = false
 
     # Select the main variable
@@ -680,23 +680,29 @@ _supported_keywords = [
     :beautifuly
 ]
 
-# Top level factorization.
-# Supported keyword arguments are:
-# - `strategy`, either `:recursive` or `:revealing`,
-# - `normalization`, either `:shift` or `:powerproduct`,
-# - `monomtransform`, either of `:exhaustive`, `:lowerdiag_plus_minus_ones`, `:product_of_unimodular`
-#   `:lowerdiag_plus_minus_ones` will generate matrices with +-1 below the main diagonal 
-#   with the increasing density.
-#   `:product_of_unimodular` will generate matrices which are products of simple 
-#   unimodular upper and lower triangular matrices. 
-# - `mainvar`, either `:random`, or `:smalldegree`, or `:largedegree`,
-# - `benchmark`, either `true` or `false`,
-# - `skipcontent`, either `true` or `false`:
-#   use `true` if you know that the content is 1.
-# - `beautifuly`, either `true` or `false`:
-#   use `true` to remove square factors and content when testing for a new variable.
-# - `interpolator`, possible options are
-#   `:automatically`, `:kron_benortiwari`, :`prime_benortiwari`
+"""
+
+    top_level_factorize(F; options...)
+
+Top level factorization.
+
+Supported keyword arguments are:
+- `strategy`, either `:recursive` or `:revealing`,
+- `normalization`, either `:shift` or `:powerproduct`,
+- `monomtransform`, either of `:exhaustive`, `:lowerdiag_plus_minus_ones`, `:product_of_unimodular`
+  `:lowerdiag_plus_minus_ones` will generate matrices with +-1 below the main diagonal 
+  with the increasing density.
+  `:product_of_unimodular` will generate matrices which are products of simple 
+  unimodular upper and lower triangular matrices. 
+- `mainvar`, either `:random`, or `:smalldegree`, or `:largedegree`,
+- `benchmark`, either `true` or `false`,
+- `skipcontent`, either `true` or `false`:
+  use `true` if you know that the content is 1.
+- `beautifuly`, either `true` or `false`:
+  use `true` to remove square factors and content when testing for a new variable.
+- `interpolator`, possible options are
+  `:automatically`, `:kron_benortiwari`, :`prime_benortiwari`
+"""
 function top_level_factorize(F; kws...)
     strategy = get(kws, :strategy, :recursive) # default strategy is recursive
     normalization = get(kws, :normalization, :powerproduct) # default normalization is powerproduct

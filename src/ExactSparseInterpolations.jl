@@ -41,20 +41,6 @@ include("factorization/hensel.jl")
 include("factorization/bivariate-factor-ff.jl")
 include("factorization/multivariate-factor-ff.jl")
 
-export Blackbox
-
-export BerlekampMassey
-export Newton
-export BenOrTiwari
-
-export CuytLee
-
-export vanDerHoevenLecerf
-export vanDerHoevenLecerfGCD
-export adaptiveVanDerHoevenLecerf
-
-export interpolate!
-export next!
-export next_point!
+export top_level_factorize
 
 end
