@@ -100,11 +100,11 @@ function check_invariant(f, main_var_idx)
             length(f_no_x) == 0 && continue
             t = length(f)
             trailterm = monomial(f_no_x, t)
-            min_deg = total_Nemo.degree(trailterm)
+            min_deg = Nemo.total_degree(trailterm)
             trailcoeff, trailmonom = coeff(trailterm, 1), monomial(trailterm, 1)
             flag = true
             if t >= 2
-                flag = !(min_deg == total_Nemo.degree(monomial(f_no_x, t - 1)))
+                flag = !(min_deg == Nemo.total_degree(monomial(f_no_x, t - 1)))
             end
             return flag, trailmonom, trailcoeff
         end
@@ -260,16 +260,16 @@ function generate_the_best_transform(f, main_var_idx)
     generate_the_best_transform!(f, Matrix(1I, n, n), main_var_idx, 1, 1, all_transforms)
     new_vars = map(var -> transform_poly(var, all_transforms[1]), xs)
     f_subs = evaluate(f, new_vars) 
-    best_one = (1, total_Nemo.degree(f_subs))
+    best_one = (1, Nemo.total_degree(f_subs))
     degrees = Vector{Int}(undef, length(all_transforms))
     for (i, tr) in enumerate(all_transforms)
         new_vars = map(var -> transform_poly(var, tr), xs)
         f_subs = evaluate(f, new_vars) 
         success, trailmonom, trailcoeff = check_invariant(f_subs, main_var_idx)
         @assert success
-        degrees[i] = total_Nemo.degree(f_subs)
-        if total_Nemo.degree(f_subs) < best_one[2]
-            best_one = (i, total_Nemo.degree(f_subs))
+        degrees[i] = Nemo.total_degree(f_subs)
+        if Nemo.total_degree(f_subs) < best_one[2]
+            best_one = (i, Nemo.total_degree(f_subs))
         end
     end
     all_transforms[best_one[1]]

@@ -168,11 +168,11 @@ end
 plo = draw_1!(totals, idxs, 
     total_degrees_1, total_degrees_2, total_degrees_3, total_degrees_4
 )
-PlotlyJS.savefig(plo, "benchmark5_1.pdf")
+PlotlyJS.savefig(plo, (@__DIR__)*"/benchmark5_1.pdf")
 plo = draw_2!(totals, idxs, 
     checks_2, checks_3, checks_4
 )
-PlotlyJS.savefig(plo, "benchmark5_2.pdf")
+PlotlyJS.savefig(plo, (@__DIR__)*"/benchmark5_2.pdf")
 
 ###################
 # 5 variables
