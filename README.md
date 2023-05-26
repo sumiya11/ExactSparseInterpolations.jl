@@ -1,6 +1,6 @@
 # ExactSparseInterpolations.jl
 
-A proof-of-concept implementation of new sparse polynomial factorization algorithms in Julia. 
+A proof-of-concept implementation of some new sparse polynomial factorization algorithms in Julia. 
 
 ### Installation
 
