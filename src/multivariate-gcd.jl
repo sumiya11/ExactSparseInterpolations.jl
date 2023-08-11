@@ -1,7 +1,8 @@
+# Multivariate gcd over finite fields
 
 # Returns a vector of regularizing weights
 function find_tagging_map(P, Q)
-    # An exponent vector with the largest norm in F and G
+    # An exponent vector with the largest norm in P and Q
     normP, idxP = findmax(norm, collect(exponent_vectors(P)))
     normQ, idxQ = findmax(norm, collect(exponent_vectors(Q)))
     if normP > normQ
@@ -74,7 +75,7 @@ function multivariate_gcd(P, Q)
     end
     G_hat = sum(G_coeffs)
     # Account for the valuation in x_1, ..., x_n
-    xs = gens(R)
+    xs = gens(ring)
     for x in xs
         correction_degree = min(valuation(P, x), valuation(Q, x)) - valuation(G_hat, x)
         if correction_degree < 0
@@ -90,14 +91,29 @@ function multivariate_gcd(P, Q)
     G
 end
 
-using Nemo, BenchmarkTools
+####################
+####################
+
+# For example, you can run the following commands in Julia.
+
+#=
+
+# First, install / update the packages:
+using Pkg
+Pkg.add(url="https://github.com/sumiya11/ExactSparseInterpolations.jl")
+Pkg.add("Nemo")
+
+# Then, you can do:
+using Nemo, ExactSparseInterpolations
 
 R, x = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:10]...])
 
-P = (x[1] + x[2] + 2) * sum(x)^2 * (prod(x) - 1)
-Q = (x[1] + x[2] + 3) * sum(x)^3 * (prod(x) + 1)
+P = (x[1] + x[2] + 2) * sum(x)^2 * (prod(x) - 1) * x[9]
+Q = (x[1] + x[2] + 3) * sum(x)^3 * (prod(x) + 1) * x[9] * x[10]
 
 G1 = Nemo.gcd(P, Q)
-G2 = multivariate_gcd(P, Q)
+G2 = ExactSparseInterpolations.multivariate_gcd(P, Q)
 
 @assert G1 == G2
+
+=#
