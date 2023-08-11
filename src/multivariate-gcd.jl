@@ -103,7 +103,7 @@ using Pkg
 Pkg.add(url="https://github.com/sumiya11/ExactSparseInterpolations.jl")
 Pkg.add("Nemo")
 
-# Then, you can do:
+# Then, you should be able to do:
 using Nemo, ExactSparseInterpolations
 
 R, x = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:10]...])
