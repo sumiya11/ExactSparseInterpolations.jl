@@ -13,5 +13,6 @@ include("../src/ExactSparseInterpolations.jl")
     @includetests ["div-and-conq"]
 
     @includetests ["cauchy"]
-    @includetests ["ben-or-tiwari.jl"]
+    # @includetests ["ben-or-tiwari"]
+    @includetests ["hensel"]
 end

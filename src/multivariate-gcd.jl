@@ -2,9 +2,9 @@
 
 default_weight(n) = ones(Int, n)
 wdegree(F) = wdegree(F, default_weight(nvars(parent(F))))
-wdegree(F, w) = maximum(x -> dot(x, w), collect(exponent_vectors(F)))
+wdegree(F, w) = maximum(x -> dot(x, w), collect(exponent_vectors(F)), init=-1)
 wvaluation(F) = wvaluation(F, default_weight(nvars(parent(F))))
-wvaluation(F, w) = minimum(x -> dot(x, w), collect(exponent_vectors(F)))
+wvaluation(F, w) = minimum(x -> dot(x, w), collect(exponent_vectors(F)), init=Inf)
 
 wlead(F) = wlead(F, default_weight(nvars(parent(F))))
 wlead(F, w) = monomial(F, findmax(monom -> wdegree(monom, w), collect(monomials(F)))[2])
@@ -42,14 +42,18 @@ end
 # [F_0, F_1, ..., F_d],
 # where F_i is the sum of all terms of F with w-degree equal to i.
 function apply_tagging_map(F, w)
+    ring = parent(F)
     exps = collect(exponent_vectors(F))
     wdeg = wdegree(F, w)
-    multivariate_coeffs = map(_ -> zero(F), 1:(wdeg+1))
+    densified_coeffs = map(_ -> Vector{elem_type(base_ring(ring))}(), 1:(wdeg + 1))
+    densified_exps = map(_ -> Vector{Vector{Int}}(), 1:(wdeg + 1))
     for i in 1:length(exps)
         wdeg_i = dot(exps[i], w)
-        multivariate_coeffs[wdeg_i+1] += term(F, i)
+        push!(densified_coeffs[wdeg_i + 1], coeff(F, i))
+        push!(densified_exps[wdeg_i + 1], exponent_vector(F, i))
     end
-    multivariate_coeffs
+    multivariate_polys = map(ce -> ring(ce[1], ce[2]), zip(densified_coeffs, densified_exps))
+    multivariate_polys
 end
 
 # Returns the gcd of P and Q
@@ -77,7 +81,6 @@ function multivariate_gcd(P, Q; do_homogenize=false)
     Tagging map: $w
     Initial total degree: $(max(total_degree(P), total_degree(Q)))
     Weighted degree: $(max(length(P_hat_coeffs), length(Q_hat_coeffs)) - 1)"""
-    @info "" P_hat_coeffs Q_hat_coeffs
     @assert length(P_hat_coeffs[end]) == 1 || length(Q_hat_coeffs[end]) == 1
     @assert sum(P_hat_coeffs) == P && sum(Q_hat_coeffs) == Q
     # Evaluate P_hat and Q_hat at a geometric progression. 
@@ -94,7 +97,7 @@ function multivariate_gcd(P, Q; do_homogenize=false)
     ring_univariate, t = PolynomialRing(field, "t")
     gcds_univariate_coeffs = Vector{Vector{elem_type(field)}}(undef, 2T)
     lead = wlead(P, w) * wlead(Q, w)
-    for i in 1:2T
+    for i in 1:(2T)
         P_hat_eval = ring_univariate(P_hat_coeffs_eval[i])
         Q_hat_eval = ring_univariate(Q_hat_coeffs_eval[i])
         gcd_hat = gcd(P_hat_eval, Q_hat_eval)
@@ -110,7 +113,7 @@ function multivariate_gcd(P, Q; do_homogenize=false)
     end
     # Interpolate each coefficient of the gcd
     G_coeffs = Vector{elem_type(ring)}(undef, length(first(gcds_univariate_coeffs)))
-    points = map(i -> point .^ i, 0:2T-1)
+    points = map(i -> point .^ i, 0:(2T - 1))
     for i in 1:length(G_coeffs)
         gcd_coeffs_i = [cfs[i] for cfs in gcds_univariate_coeffs]
         G_coeffs[i] = interpolate!(interpolator, points, gcd_coeffs_i)
@@ -141,73 +144,20 @@ end
 
 # For example, you can run the following commands in Julia.
 
-
-
 # # First, install / update the packages:
 # using Pkg
 # Pkg.add(url="https://github.com/sumiya11/ExactSparseInterpolations.jl")
 # Pkg.add("Nemo")
-
-# Then, you should be able to do:
+#
+# # Then, you should be able to do:
 # using Nemo, ExactSparseInterpolations
-# using Nemo, Combinatorics
-
-# R, (x1, x2, x3, x4) = PolynomialRing(GF(2^62 + 135), ["x1", "x2", "x3", "x4"])
-
-# random_monomial(xs, d) = prod(rand(xs) for i in 1:d)
-
-# begin
-#     for i in 1:100
-#         xx = [x1, x2, x3]
-#         D = rand(1:2)
-#         sq1, sq2, sq3 = rand(1:1), rand(1:1), rand(1:1)
-#         T1, T2, T3 = rand(1:10), rand(1:10), rand(1:10)
-#         monoms1 = map(_ -> random_monomial(xx, D), 1:T1)
-#         coeffs1 = map(_ -> rand(base_ring(R)), 1:length(monoms1))
-#         monoms2 = map(_ -> random_monomial(xx, D), 1:T3)
-#         coeffs2 = map(_ -> rand(base_ring(R)), 1:length(monoms2))
-#         monoms3 = map(_ -> random_monomial(xx, D), 1:T3)
-#         coeffs3 = map(_ -> rand(base_ring(R)), 1:length(monoms3))
-#         poly1 = sum(coeffs1 .* monoms1)^sq1
-#         poly2 = sum(coeffs2 .* monoms2)^sq2
-#         poly3 = sum(coeffs3 .* monoms3)^sq3
-#         # w = _find_tagging_map_hom(poly3 * poly1, poly3 * poly2)
-#         w = _find_tagging_map_hom(poly3 * poly1)
-#         P_hat = apply_tagging_map(poly3 * poly1, w)
-#         # Q_hat = apply_tagging_map(poly3 * poly2, w)
-#         @info "" poly3 * poly1 P_hat[end]
-#         @info "" w
-#         @assert length(P_hat[end]) == 1
-#         # G1 = multivariate_gcd(poly3 * poly1, poly3 * poly2, do_homogenize=false)
-#         # G2 = Nemo.gcd(poly3 * poly1, poly3 * poly2)
-#         # @info "" G1 G2
-#         # @assert G1 == G2
-#     end
-# end
-
-# F = x1 * x2 + x1 * x3
-
-# w = _find_tagging_map_hom(F)
-# apply_tagging_map(F, w)
-
-# G = (x1 + x2 + 5)^3
-
-# homogenize(G)
-
-# G == ExactSparseInterpolations.multivariate_gcd(F, G)
-
-# G
-
-# w = _find_tagging_map_hom(F, G)
-# apply_tagging_map(F, w)
-
-# R, x = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:10]...])
-
-# P = (x[1] + x[2] + 2) * sum(x)^2 * (prod(x) - 1) * x[9]
-# Q = (x[1] + x[2] + 3) * sum(x)^3 * (prod(x) + 1) * x[9] * x[10]
-
+#
+# R, x = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:6]...])
+#
+# P = (x[1] + x[2] + 2) * sum(x)^2 * (prod(x) - 1) * x[5]
+# Q = (x[1] + x[2] + 3) * sum(x)^3 * (prod(x) + 1) * x[5] * x[6]
+#
 # G1 = Nemo.gcd(P, Q)
 # G2 = ExactSparseInterpolations.multivariate_gcd(P, Q)
-
+#
 # @assert G1 == G2
-

@@ -40,6 +40,7 @@ include("factorization/multivariate-factor-ff.jl")
 
 include("multivariate-gcd.jl")
 include("multivariate-square-free.jl")
+include("iterative-factor.jl")
 
 export top_level_factorize
 

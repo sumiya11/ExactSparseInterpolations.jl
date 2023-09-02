@@ -96,17 +96,17 @@ end
 
 # using Nemo
 
-R, (x, y, z) = PolynomialRing(GF(2^62 + 135), ["x", "y", "z"])
+# R, (x, y, z) = PolynomialRing(GF(2^62 + 135), ["x", "y", "z"])
 
-F = x * y^3 * (y + 1)^3
-Nemo.factor(F)
+# F = x * y^3 * (y + 1)^3
+# Nemo.factor(F)
 
-multivariate_square_free(F)
+# multivariate_square_free(F)
 
-R, x = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:6]...])
+# R, x = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:6]...])
 
-F = 6 * x[1] * x[5]^4 * x[6]^5 * (x[1] + 5x[6])^5
+# F = 6 * x[1] * x[5]^4 * x[6]^5 * (x[1] + 5x[6])^5
 
-@time Nemo.factor(F)
+# @time Nemo.factor(F)
 
-@time sq = multivariate_square_free(F)
+# @time sq = multivariate_square_free(F)

@@ -41,14 +41,14 @@ function buildproducttree(z::T, xs) where {T}
     @inbounds for i in 1:n
         tree[1][i] = z - xs[i]
     end
-    @inbounds for i in n+1:npow
+    @inbounds for i in (n + 1):npow
         tree[1][i] = one(z)
     end
     @inbounds for i in 2:k
         nel = 2^(k - i)
         tree[i] = Vector{T}(undef, nel)
         for j in 1:nel
-            tree[i][j] = tree[i-1][2*j-1] * tree[i-1][2*j]
+            tree[i][j] = tree[i - 1][2 * j - 1] * tree[i - 1][2 * j]
         end
     end
     tree
@@ -190,7 +190,6 @@ function fastpolyinterpolate(R, xs, ys)
     lagrangetree(z, ysi, ptree)
 end
 
-
 # Adapted from
 #   "Solving Systems of Non-Linear Polynomial Equations Faster"
 #   by Canny, Kaltofen, and Yagati, 1989
@@ -241,8 +240,8 @@ function _fast_multivariate_evaluate(R, f, ω, T)
     # sigma2 = v1v2 + v1v2 +..,
     # sigmat = v1v2..vt 
     sigmai = reverse(collect(coefficients(producttree(z, vi)))[1:t])
-    Ai = vcat([zero(K) for _ in 1:2T-1], [one(K)], sigmai, [zero(K) for _ in 1:(2T-t-1)])
-    wi = vcat(map(i -> (-i) * sigmai[i], 1:t), [zero(K) for _ in 1:2T-t])
+    Ai = vcat([zero(K) for _ in 1:(2T - 1)], [one(K)], sigmai, [zero(K) for _ in 1:(2T - t - 1)])
+    wi = vcat(map(i -> (-i) * sigmai[i], 1:t), [zero(K) for _ in 1:(2T - t)])
 
     # sj are the power sums of vi:
     # s1 = v1 +..+ vt,
@@ -270,7 +269,7 @@ function fast_multivariate_evaluate(R, f, ω, T::Integer)
     evals = map(_ -> zero(K), 1:T)
     tms = collect(terms(f))
     for i in 1:q
-        fi = sum(view(tms, (1+T*(i-1)):T*i))
+        fi = sum(view(tms, (1 + T * (i - 1)):(T * i)))
         evi = _fast_multivariate_evaluate(R, fi, ω, T)
         @assert length(evi) == T
         for j in 1:T
@@ -279,7 +278,7 @@ function fast_multivariate_evaluate(R, f, ω, T::Integer)
     end
     rm = t - q * T
     if !iszero(rm)
-        fend = sum(tms[T*q+1:end])
+        fend = sum(tms[(T * q + 1):end])
         evend = _fast_multivariate_evaluate(R, fend, ω, T)
         for j in 1:T
             evals[j] += evend[j]

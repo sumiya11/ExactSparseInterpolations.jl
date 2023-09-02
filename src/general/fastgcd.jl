@@ -4,7 +4,7 @@
 
 # Given 2×2 matrix A and vector x, returns the matrix-vector product Ax.
 # Input is not modified and output is not shared.
-function matvec2by1(A::Tuple{V, V}, x::V) where {V<:Tuple{T, T}} where {T}
+function matvec2by1(A::Tuple{V,V}, x::V) where {V<:Tuple{T,T}} where {T}
     R = parent(x[1])
     ans = (R(), R())
     tmp = R()
@@ -22,7 +22,7 @@ end
 
 # Given two matrices A and B, returns the matrix product AB.
 # Input is not modified and output is not shared.
-function matmul2by2(A::Tup, B::Tup) where {Tup<:Tuple{Tuple{T, T}, Tuple{T, T}}} where {T}
+function matmul2by2(A::Tup, B::Tup) where {Tup<:Tuple{Tuple{T,T},Tuple{T,T}}} where {T}
     R = parent(A[1][1])
     ans = ((R(), R()), (R(), R()))
     tmp = R()
@@ -93,14 +93,14 @@ function _fastgcd(r0, r1, k)
     end
     # first recursive call
     d = div(k, 2)
-    jm1, R = _fastgcd(r0 ⥣ 2d, r1 ⥣ (2d - (n0 - n1)), d)
+    jm1, R = _fastgcd(r0⥣2d, r1⥣(2d - (n0 - n1)), d)
     rjm1, rj = matvec2by1(R, (r0, r1))
     _, nj = degree(rjm1), degree(rj)
     if iszero(rj) || k < n0 - nj
         return jm1, R
     end
     qj = div(rjm1, rj)
-    rjp1 = rjm1 - qj*rj
+    rjp1 = rjm1 - qj * rj
     rhojp1 = leading_coefficient(rjp1)
     # in Nemo, the leading_coefficient of 0 is 0;
     # we want it to be 1 here.
@@ -109,8 +109,8 @@ function _fastgcd(r0, r1, k)
     njp1 = degree(rjp1)
     # second recursive call
     d⁺ = k - (n0 - nj)
-    hmj, S = _fastgcd(rj ⥣ 2d⁺, rjp1 ⥣ (2d⁺ - (nj - njp1)), d⁺)
-    Qj = ((zero(r0), one(r0)), (parent(qj)(inv(rhojp1)), -qj*inv(rhojp1)))
+    hmj, S = _fastgcd(rj⥣2d⁺, rjp1⥣(2d⁺ - (nj - njp1)), d⁺)
+    Qj = ((zero(r0), one(r0)), (parent(qj)(inv(rhojp1)), -qj * inv(rhojp1)))
     hmj + (jm1 + 1), matmul2by2(S, matmul2by2(Qj, R))
 end
 
@@ -121,7 +121,7 @@ function standardize(g, f)
         g, f = f, g
     end
     if degree(g) == degree(f)
-        g, f = f, g - f 
+        g, f = f, g - f
     end
     @assert degree(g) > degree(f)
     g, f
@@ -144,7 +144,7 @@ function fastconstrainedEEA(g, f, k)
     ri, rj = matvec2by1(R, (g, f))
     if degree(ri) <= k
         t, s = R[1]
-        return ri, t, s 
+        return ri, t, s
     else
         t, s = R[2]
         return rj, t, s
