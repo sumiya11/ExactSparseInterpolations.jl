@@ -63,6 +63,7 @@ end
 # returns polynomials (f1*, ..., fr*) such that
 #   F* = lc_x(F)f1*...fr* (mod p^l)
 #
+# (!) Returned polynomials are monic.
 # (!) Assumes p is linear, that is
 #   p = y + a
 # (!) Assumes variable `x` is the first variable in the polynomial ring object.
@@ -71,7 +72,7 @@ end
 # where n = deg_x(F)
 function hensel_multifactor_lifting(F::T, fi::Vector{T}, l::Integer, p::T) where {T}
     lcf = leading_coefficient_in(F, first(gens(parent(F))))
-    # @assert mod(lcf * prod(fi), p) == mod(F, p)
+    @assert mod(lcf * prod(fi), p) == mod(F, p)
     r = length(fi)
     if isone(r)
         # this can be turned into inverting modulo p,
@@ -82,7 +83,7 @@ function hensel_multifactor_lifting(F::T, fi::Vector{T}, l::Integer, p::T) where
     k = div(r, 2)
     d = ceil(Int, log2(l))
     gi = mod(lcf * prod(fi[i] for i in 1:k), p)
-    hi = mod(prod(fi[i] for i in k+1:r), p)
+    hi = mod(prod(fi[i] for i in (k + 1):r), p)
     I_am_one, si, ti = Nemo.gcdx(gi, hi)
     #@assert isone(I_am_one)
     si, ti = mod(si, p), mod(ti, p)
@@ -91,6 +92,39 @@ function hensel_multifactor_lifting(F::T, fi::Vector{T}, l::Integer, p::T) where
         gi, hi, si, ti = hensel_step(F, gi, hi, si, ti, m)
     end
     f1tok = hensel_multifactor_lifting(gi, fi[1:k], l, p)
-    fktor = hensel_multifactor_lifting(hi, fi[k+1:r], l, p)
+    fktor = hensel_multifactor_lifting(hi, fi[(k + 1):r], l, p)
     append!(f1tok, fktor)
+end
+
+function hensel_normalization_joris(F::T, Fi::Vector{T}, l, p) where {T}
+    R = parent(F)
+    K = base_ring(R)
+    x, y = gens(R)
+    point = [R(rand(K)), y]
+    R_uni, t = K["t"]
+    result = similar(Fi)
+    @debug """
+    Lifted polys: $Fi
+    Lead in x (x is main var.): $(leading_coefficient_in(F, x))
+    Lifted up to $(p)^$(l)
+    Evaluation point: $point"""
+    for i in 1:length(Fi)
+        fi = Fi[i]
+        fi = evaluate(fi, point)
+        fi_uni = to_univariate(R_uni, fi)
+        r_, t_, s_ = Padé(fi_uni, t^(l), l - 2)
+        B = evaluate(t_, y)
+        B = divexact(B, leading_coefficient(B))
+        result[i] = mod(Fi[i] * B, p^(l))
+    end
+    result
+end
+
+function hensel_lift(F::T, Fi::Vector{T}, l::Integer, p::T) where {T}
+    R = parent(F)
+    x, y = gens(R)
+    @assert all(f -> isone(leading_coefficient_in(f, x)), Fi)
+    Fi = hensel_multifactor_lifting(F, Fi, l, p)
+    Fi = hensel_normalization_joris(F, Fi, l, p)
+    Fi
 end

@@ -10,7 +10,7 @@
 function select_main_variable(F, mainvar, beautifuly)
     ring = parent(F)
     K, xs = base_ring(ring), gens(ring)
-    biv_ring, (x, u) = PolynomialRing(K, ["x","u"])
+    biv_ring, (x, u) = PolynomialRing(K, ["x", "u"])
     univ_ring, t = PolynomialRing(K, "t")
     # traverse variables in the order of increasing degree
     var2degree = [(i, Nemo.degree(F, xs[i])) for i in 1:length(xs)]
@@ -22,7 +22,7 @@ function select_main_variable(F, mainvar, beautifuly)
         @warn "Unknown option mainvar=$mainvar"
         false
     end
-    sort!(var2degree, by=x->x[2], rev=reversed)
+    sort!(var2degree, by=x -> x[2], rev=reversed)
     # Evaluating at (u, ..., u, t, u, ..., u)
     # for some random u's
     k = 9
@@ -42,11 +42,11 @@ function select_main_variable(F, mainvar, beautifuly)
 
         degree(F, i) < 2 && continue
 
-        fii = Vector{Tuple{typeof(F), Vector{typeof(t)}}}(undef, k)
+        fii = Vector{Tuple{typeof(F),Vector{typeof(t)}}}(undef, k)
         flag = false
         for (j, ui) in enumerate(us)
             fii[j] = (u, [t])
-            p0 = vcat(repeat([ring(u0)], i - 1), [xs[i]], repeat([ring(u0)], length(xs) - i)) 
+            p0 = vcat(repeat([ring(u0)], i - 1), [xs[i]], repeat([ring(u0)], length(xs) - i))
             p = vcat(repeat([ring(ui)], i - 1), [xs[i]], repeat([ring(ui)], length(xs) - i))
             lc = leading_coefficient_in(F, xs[i])
             # F(ui, .., ui, xi, ui, .., ui) is squarefree
@@ -181,13 +181,13 @@ function matrices_to_check_3(n, main_var_idx, t, other_diagonals)
     #     tt
     # )), 1:t)...)
     res = collect(Combinatorics.combinations(
-        [(i, i+1) for i in 1:n-1 if i != main_var_idx], t))
+        [(i, i + 1) for i in 1:n-1 if i != main_var_idx], t))
     if length(other_diagonals) != 0
         newres = []
         for o in other_diagonals
-            for (j, r) in enumerate(res) 
+            for (j, r) in enumerate(res)
                 append!(newres, [vcat(r, x) for x in collect(Combinatorics.combinations(
-                    [(i, i+o) for i in 1:n-o if i != main_var_idx], t-1))])
+                    [(i, i + o) for i in 1:n-o if i != main_var_idx], t - 1))])
             end
         end
         return newres
@@ -218,8 +218,8 @@ function generate_next_transform_3(transform, main_var_idx, try_harder)
 end
 
 function generate_the_best_transform!(
-        f, transform, main_var_idx, 
-        I, J, all_transforms)
+    f, transform, main_var_idx,
+    I, J, all_transforms)
     R = parent(f)
     n = nvars(R)
     xs = gens(R)
@@ -230,21 +230,21 @@ function generate_the_best_transform!(
                 (i == j || main_var_idx == i || main_var_idx == j) && continue
                 transform[i, j] = k
                 new_vars = map(var -> transform_poly(var, transform), xs)
-                f_subs = evaluate(f, new_vars) 
+                f_subs = evaluate(f, new_vars)
                 success, trailmonom, trailcoeff = check_invariant(f_subs, main_var_idx)
                 if success
                     push!(all_transforms, copy(transform))
                 end
-                
+
                 if !success
-                    generate_the_best_transform!(f, transform, main_var_idx, i+1, j, all_transforms)
-                    generate_the_best_transform!(f, transform, main_var_idx, i, j+1, all_transforms)
+                    generate_the_best_transform!(f, transform, main_var_idx, i + 1, j, all_transforms)
+                    generate_the_best_transform!(f, transform, main_var_idx, i, j + 1, all_transforms)
                 end
 
                 transform[i, j] = zero(transform[i, j])
-                
-                generate_the_best_transform!(f, transform, main_var_idx, i+1, j, all_transforms)
-                generate_the_best_transform!(f, transform, main_var_idx, i, j+1, all_transforms)
+
+                generate_the_best_transform!(f, transform, main_var_idx, i + 1, j, all_transforms)
+                generate_the_best_transform!(f, transform, main_var_idx, i, j + 1, all_transforms)
 
                 s += 1
             end
@@ -259,12 +259,12 @@ function generate_the_best_transform(f, main_var_idx)
     n = length(gens(parent(f)))
     generate_the_best_transform!(f, Matrix(1I, n, n), main_var_idx, 1, 1, all_transforms)
     new_vars = map(var -> transform_poly(var, all_transforms[1]), xs)
-    f_subs = evaluate(f, new_vars) 
+    f_subs = evaluate(f, new_vars)
     best_one = (1, Nemo.total_degree(f_subs))
     degrees = Vector{Int}(undef, length(all_transforms))
     for (i, tr) in enumerate(all_transforms)
         new_vars = map(var -> transform_poly(var, tr), xs)
-        f_subs = evaluate(f, new_vars) 
+        f_subs = evaluate(f, new_vars)
         success, trailmonom, trailcoeff = check_invariant(f_subs, main_var_idx)
         @assert success
         degrees[i] = Nemo.total_degree(f_subs)
@@ -300,7 +300,7 @@ function find_power_product_substitution(f, main_var_idx, monomtransform)
     if monomtransform == :exhaustive
         transform = generate_the_best_transform(f, main_var_idx)
         new_vars = map(var -> transform_poly(var, transform), xs)
-        f_subs = evaluate(f, new_vars) 
+        f_subs = evaluate(f, new_vars)
         success, trailmonom, trail_coeff = check_invariant(f_subs, main_var_idx)
         @assert success
         invtransform = round.(Int, inv(transform))
@@ -310,7 +310,7 @@ function find_power_product_substitution(f, main_var_idx, monomtransform)
         k += 1
         # ..obtain the transformed polynomial
         new_vars = map(var -> transform_poly(var, transform), xs)
-        f_subs = evaluate(f, new_vars) 
+        f_subs = evaluate(f, new_vars)
         success, trailmonom, trail_coeff = check_invariant(f_subs, main_var_idx)
         success && break
         # ..scramble the transform a bit
@@ -337,7 +337,7 @@ end
 function evaluate_coefficients(F_u, var_main, var_u, c::Vector{C}, T, ring_coeff) where {C}
     xs, K = gens(ring_coeff), base_ring(ring_coeff)
     xs = vcat([one(ring_coeff), one(ring_coeff)], xs)
-    evaluated_polys = [Dict{Tuple{Int, Int}, elem_type(K)}() for _ in 1:T]
+    evaluated_polys = [Dict{Tuple{Int,Int},elem_type(K)}() for _ in 1:T]
     # assuming t and u are the first and the second variables, resp.
     for d in 0:Nemo.degree(F_u, 1)
         for D in 0:Nemo.degree(F_u, 2)
@@ -354,15 +354,15 @@ function evaluate_coefficients(F_u, var_main, var_u, c::Vector{C}, T, ring_coeff
     res = Vector{typeof(var_main)}(undef, T)
     for i in 1:T
         cfs = evaluated_polys[i]
-        poly = sum(dD -> var_main^dD[1]*var_u^dD[2]*cfs[dD], keys(cfs))
+        poly = sum(dD -> var_main^dD[1] * var_u^dD[2] * cfs[dD], keys(cfs))
         res[i] = poly
     end
     res
 end
 
 function fill_coeff_evaluations!(
-        Fcoeffs::Vector{Vector{Vector{T}}}, Fi, 
-        k::Integer, npoints::Integer) where {T}
+    Fcoeffs::Vector{Vector{Vector{T}}}, Fi,
+    k::Integer, npoints::Integer) where {T}
     K = base_ring(parent(Fi[1]))
     if !isassigned(Fcoeffs, 1)
         for i in 1:length(Fi)
@@ -382,27 +382,27 @@ end
 
 function normalize_factorization(Fi::Vector{T}, trail) where {T}
     ai = map(trailing_coefficient, Fi)
-    Fi = map((f, c) -> trail*divexact(f, c), Fi, ai)
+    Fi = map((f, c) -> trail * divexact(f, c), Fi, ai)
     Fi
 end
 
 # Returns a return code and potential factors of F.
 # Assumes there are <= T terms to interpolate at least in some of the factors.
 function _find_some_factors(
-            F, T::Integer,
-            bench::Bool,
-            main_var_idx,
-            at_u, Fi_at_u, fi_at_u,
-            monomtransform::Symbol,
-            beautifuly
-        )
+    F, T::Integer,
+    bench::Bool,
+    main_var_idx,
+    at_u, Fi_at_u, fi_at_u,
+    monomtransform::Symbol,
+    beautifuly
+)
     @assert T > 0
     ring = parent(F)
     K, xs = base_ring(ring), gens(ring)
     n = length(xs)
     @assert characteristic(K) > 0
     @assert main_var_idx != 0
-    
+
     # Find the variable substitution that gives a normalization
     @savetime bench :t_find_power_product F_sub, new_vars, transform, invtransform, train_before, trailmonom, trailcoeff, attempts = find_power_product_substitution(
         F, main_var_idx, monomtransform)
@@ -429,11 +429,11 @@ function _find_some_factors(
     # cs = [c2...cn] is an element of K^(n-1), which will be the starting
     # point of the geometric sequence as requested by the interpolator
     cs = startingpoint(interpolator)
-    
+
     # Reduce F to a bivariate polynomial in the main variable and u:
     # evaluate F at (x1, x2 u, x3 u, ..., xn u)
     point_u = vcat(
-        u_ext .* x_ext[1:main_var_idx-1], 
+        u_ext .* x_ext[1:main_var_idx-1],
         t_ext,
         u_ext .* x_ext[main_var_idx:end]
     )
@@ -443,7 +443,7 @@ function _find_some_factors(
     # (the first point in the sequence will be c^0).
     F_sub_u_c = evaluate_coefficients(F_sub_u, t_u, u_u, cs .^ 0)
     trail = evaluate(trailmonom, vcat([one(K)], cs .^ 0))
-    
+
     # @info "Evaluated polys" F_sub_u F_sub_u_c trail typeof(F_sub_u_c)
     # Factor bivariate polynomial in K[t, u].
     #
@@ -456,7 +456,7 @@ function _find_some_factors(
     #     F_sub_u_c)
     # @info "Revealing factorization" Fi fi Si typeof(Fi) typeof(fi)
     # Fi = normalize_factorization(Fi, trail)
-    
+
     fi = map(f -> evaluate(f, [t_u, zero(ring_u)]), Fi_at_u)
     Fi = map(f -> evaluate(f, [t_u, u_u]), Fi_at_u)
 
@@ -465,13 +465,13 @@ function _find_some_factors(
     # Initialize storages and fill the values for the first evaluation point.
     Fcoeffs = Vector{Vector{Vector{elem_type(K)}}}(undef, length(Fi))
     # fill_coeff_evaluations!(Fcoeffs, Fi, 1, npoints)
-    
+
     # Evaluate another 2T - 1 times
     cpoints = map(i -> cs .^ i, 0:npoints-1)
     @savetime bench :t_evaluating_coefficients F_sub_u_ci = evaluate_coefficients(
         F_sub_u, t_u, u_u, cs, npoints, ring_coeff)
     @saveval bench :v_points_used length(cpoints)
-    
+
     @savetime bench :t_many_hensel_liftings for j in 1:npoints
         F_sub_u_c = F_sub_u_ci[j]
         @assert parent(F_sub_u_c) == ring_u
@@ -494,7 +494,7 @@ function _find_some_factors(
             coeffs_interpolated[i][j] = interpolate!(interpolator, cpoints, Fcoeffs[i][j])
         end
     end
-        
+
     # @info "Interpolated coeffs" coeffs_interpolated
     # Select only factors which have less than a half of the coefficients present.
     # This means that 
@@ -505,7 +505,7 @@ function _find_some_factors(
     =#
     # Check 1.5 instead of 2
     good_factors = filter(
-        i -> all(c -> length(c) <= div(T, 2), coeffs_interpolated[i]), 
+        i -> all(c -> length(c) <= div(T, 2), coeffs_interpolated[i]),
         1:length(Fcoeffs)
     )
     if isempty(good_factors)
@@ -533,7 +533,7 @@ function _find_some_factors(
                 cx = coeff(coeffs_x[j], 1)
                 cxx = collect(coefficients(coeffs_xs[j]))
                 for jj in 1:length(cxx)
-                    cfs[kk+jj-1] = cx*cxx[jj]
+                    cfs[kk+jj-1] = cx * cxx[jj]
                 end
                 kk += NNj
             end
@@ -547,17 +547,17 @@ function _find_some_factors(
         # @info "after inv subst" Finterpolated
         # divide out the content in the main variable
         Finterpolated = map(f -> divexact(f, content_in(f, xs[main_var_idx])), Finterpolated)
-        
+
         # @info "after remove content" Finterpolated
         # normalize by the constant leading coefficient
         Finterpolated = map(f -> divexact(f, leading_coefficient(f)), Finterpolated)
     end
 
     @saveval bench :v_tree (
-        :interpolated, 
+        :interpolated,
         main_var_idx,
-        hash(F), 
-        Nemo.degrees(F), 
+        hash(F),
+        Nemo.degrees(F),
         map(f -> (hash(f), Nemo.degrees(f)), Finterpolated)
     )
 
@@ -565,8 +565,8 @@ function _find_some_factors(
 end
 
 function _factorize_recursive_prim_squarefree(
-        F, bench, mainvar, monomtransform, beautifuly; 
-        ubT=2length(F))  # 1. this is a heurusitic!
+    F, bench, mainvar, monomtransform, beautifuly;
+    ubT=2length(F))  # 1. this is a heurusitic!
     @assert ubT > 0
     # @assert bench
     success = false
@@ -575,14 +575,14 @@ function _factorize_recursive_prim_squarefree(
     @savetime bench :t_select_main_variable main_var_idx, at_u, Fi_at_u, fi_at_u, new_F, other_part = select_main_variable(
         F, mainvar, beautifuly)
     @saveval bench :v_main_var (main_var_idx=main_var_idx, degrees=map(i -> Nemo.degree(new_F, i), 1:length(gens(parent(F)))), at_u=at_u)
-    
+
     Pi = Vector{typeof(F)}()
     if !isunit(other_part)
         @saveval bench :v_tree (
-            :content, 
+            :content,
             main_var_idx,
-            hash(F), 
-            Nemo.degrees(F), 
+            hash(F),
+            Nemo.degrees(F),
             map(f -> (hash(f), Nemo.degrees(f)), [new_F, other_part])
         )
         other_factors = _factorize_recursive_prim_squarefree(
@@ -599,14 +599,14 @@ function _factorize_recursive_prim_squarefree(
     while T <= ubT
         success, Pii = _find_some_factors(
             new_F, T, bench, main_var_idx, at_u, Fi_at_u, fi_at_u, monomtransform, beautifuly)
-        T = 2*T
+        T = 2 * T
         success && break
     end
     !success && return Pi
     @savetime bench :t_exact_division begin
         P = prod(Pii)
         flag, Q = divides(new_F, P)  # 2. this is a heurusitic! 
-    end 
+    end
     append!(Pi, Pii)
     if flag && isunit(Q)
         return Pi
@@ -618,7 +618,7 @@ function _factorize_recursive_prim_squarefree(
         @saveval bench :v_tree (
             :divided,
             main_var_idx,
-            hash(new_F), 
+            hash(new_F),
             Nemo.degrees(new_F),
             [(hash(Q), Nemo.degrees(Q))]
         )
@@ -630,13 +630,13 @@ function _factorize_recursive_prim_squarefree(
 end
 
 function _factorize(
-        F, 
-        strategy, normalization, mainvar, bench, 
-        skipcontent, monomtransform, interpolator,
-        beautifuly)
+    F,
+    strategy, normalization, mainvar, bench,
+    skipcontent, monomtransform, interpolator,
+    beautifuly)
     # We assume F is squarefree --
     # there is no squarefree factorization implemented :^(
-    
+
     # Get the primitive part of F.
     # Don't forget to recursively factorize the content
     if skipcontent
@@ -653,14 +653,14 @@ function _factorize(
         Fi = _factorize_recursive_prim_squarefree(
             F_prim, bench, mainvar, monomtransform, beautifuly)
     end
-    
+
     # Factor the content.
     if !skipcontent
         @savetime bench :t_factoring_content begin
             cont = divexact(F, F_prim)
             if !isone(cont)
                 Fj = _factorize(
-                    cont, strategy, normalization, mainvar, 
+                    cont, strategy, normalization, mainvar,
                     bench, skipcontent, monomtransform, interpolator,
                     beautifuly)
                 append!(Fi, Fj)

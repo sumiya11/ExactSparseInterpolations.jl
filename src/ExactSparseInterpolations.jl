@@ -7,10 +7,6 @@ import Random
 import Combinatorics, Permutations
 using LinearAlgebra
 
-import Graphs, GraphPlot
-import Cairo, Fontconfig
-using Compose
-
 include("general/abstract.jl")
 
 include("general/generic.jl")
@@ -35,11 +31,16 @@ include("interpolation/van-der-hoeven-lecerf.jl")
 include("interpolation/faster-van-der-hoeven-lecerf.jl")
 include("interpolation/adaptive-van-der-hoeven-lecerf.jl")
 include("interpolation/v-d-h-l-gcd.jl")
+include("interpolation/primes-ben-or-tiwari.jl")
 
 include("factorization/univariate-factor-ff.jl")
 include("factorization/hensel.jl")
 include("factorization/bivariate-factor-ff.jl")
 include("factorization/multivariate-factor-ff.jl")
+
+include("multivariate-gcd.jl")
+include("multivariate-square-free.jl")
+include("iterative-factor.jl")
 
 export top_level_factorize
 

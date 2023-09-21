@@ -6,6 +6,17 @@ function _producttree(z, xs, i, j)
     _producttree(z, xs, i, m) * _producttree(z, xs, m + 1, j)
 end
 
+# Gcd of all f in f[i..j] 
+function _gcdtree(f, i, j)
+    i == j && return f[i]
+    m = div(i + j, 2)
+    gcd(_gcdtree(f, i, m), _gcdtree(f, m + 1, j))
+end
+
+function gcdtree(f)
+    _gcdtree(f, 1, length(f))
+end
+
 # computes the product of all (z - x) for x in xs
 # using the tree product algorithm.
 # O(M(n)), n = length(xs)
@@ -30,14 +41,14 @@ function buildproducttree(z::T, xs) where {T}
     @inbounds for i in 1:n
         tree[1][i] = z - xs[i]
     end
-    @inbounds for i in n+1:npow
+    @inbounds for i in (n + 1):npow
         tree[1][i] = one(z)
     end
     @inbounds for i in 2:k
-        nel = 2^(k-i)
+        nel = 2^(k - i)
         tree[i] = Vector{T}(undef, nel)
         for j in 1:nel
-            tree[i][j] = tree[i-1][2*j-1] * tree[i-1][2*j]
+            tree[i][j] = tree[i - 1][2 * j - 1] * tree[i - 1][2 * j]
         end
     end
     tree
@@ -49,7 +60,7 @@ function _remindertree!(f, rtree, ptree, depth, idx)
         rtree[idx] = coeff(mod(f, ptree[1][idx]), 0)
         return rtree
     end
-    l, r = 2*idx - 1, 2*idx
+    l, r = 2 * idx - 1, 2 * idx
     @inbounds r0 = mod(f, ptree[depth][l])
     @inbounds r1 = mod(f, ptree[depth][r])
     _remindertree!(r0, rtree, ptree, depth - 1, l)
@@ -107,14 +118,14 @@ function _solve_toeplitz(R, n, x, y, b::Vector{T}) where {T}
     m = t^(n + 1)
     X, Y = x, y
     B = R(b)
-    P = mod(reverse(X, n + 2)*reverse(B, n + 1), m)
-    Q = mod(Y*reverse(B, n + 1), m)
-    Z = mod(X*reverse(Q, n + 1) - reverse(Y, n + 2)*reverse(P, n + 1), m)
+    P = mod(reverse(X, n + 2) * reverse(B, n + 1), m)
+    Q = mod(Y * reverse(B, n + 1), m)
+    Z = mod(X * reverse(Q, n + 1) - reverse(Y, n + 2) * reverse(P, n + 1), m)
     Z = div(Z, trailing_coefficient(X))
     Z
 end
 
-function first_row_and_col_of_inverse(R, n::Int, a::AbstractVector)
+function first_row_and_col_of_toeplitz_inverse(R, n::Int, a::AbstractVector)
     K, t = base_ring(R), gen(R)
     U0 = t^(2n + 1)
     U1 = R(a)
@@ -122,12 +133,12 @@ function first_row_and_col_of_inverse(R, n::Int, a::AbstractVector)
     # the system is singular
     degree(Uj) < n && return false, a, a
     @assert !iszero(trailing_coefficient(Vj))
-    x = inv(leading_coefficient(Uj))*Vj
+    x = inv(leading_coefficient(Uj)) * Vj
     U1 = reverse(U1)
     Uj, Wj, Vj = fastconstrainedEEA(U0, U1, n)
-    y = inv(leading_coefficient(Uj))*Vj
+    y = inv(leading_coefficient(Uj)) * Vj
     return true, x, y
-    # the original algorithm includes MORE steps.
+    # NOTE: the original algorithm includes MORE steps.
     # We limit outselves to the easy case and implement less steps
 end
 
@@ -139,7 +150,7 @@ function solve_toeplitz(R, a::Vector{T}, b::Vector{T}) where {T}
     @assert !isempty(a) && !isempty(b)
     n = length(b) - 1
     @assert length(a) == 2n + 1
-    solvable, x, y = first_row_and_col_of_inverse(R, n, a)
+    solvable, x, y = first_row_and_col_of_toeplitz_inverse(R, n, a)
     @assert solvable
     _solve_toeplitz(R, n, x, y, b)
 end
@@ -149,14 +160,14 @@ function _lagrangetree(z, ys, ptree, depth, idx)
     if depth == 0
         return R(ys[idx])
     end
-    l, r = 2*idx - 1, 2*idx
+    l, r = 2 * idx - 1, 2 * idx
     r0 = _lagrangetree(z, ys, ptree, depth - 1, l)
     r1 = _lagrangetree(z, ys, ptree, depth - 1, r)
     r0 * ptree[depth][r] + r1 * ptree[depth][l]
 end
 
 function lagrangetree(z, ys, ptree)
-    _lagrangetree(z, ys, ptree, treedepth(ptree) - 1, 1) 
+    _lagrangetree(z, ys, ptree, treedepth(ptree) - 1, 1)
 end
 
 # Returns a unique univariate polynomial f in the ring R,
@@ -173,12 +184,11 @@ function fastpolyinterpolate(R, xs, ys)
     si = remindertree(dm, ptree)
     ysi = zeros(base_ring(R), nextpow(2, length(ys)))
     for i in 1:length(ys)
-        ysi[i] = ys[i]*inv(si[i])
+        ysi[i] = ys[i] * inv(si[i])
     end
     # O(M(n)logn)
     lagrangetree(z, ysi, ptree)
 end
-
 
 # Adapted from
 #   "Solving Systems of Non-Linear Polynomial Equations Faster"
@@ -199,7 +209,7 @@ end
 #     It assumes that the number of evaluation points T
 #     is equal to or greater than the number of monomials t.
 function _fast_multivariate_evaluate(R, f, ω, T)
-# vi = mi(ω)
+    # vi = mi(ω)
     #     |1 v1 ... v1^{T-1}|
     # V = |1 v2 ... v2^{T-1}|
     #     |     ...
@@ -230,8 +240,8 @@ function _fast_multivariate_evaluate(R, f, ω, T)
     # sigma2 = v1v2 + v1v2 +..,
     # sigmat = v1v2..vt 
     sigmai = reverse(collect(coefficients(producttree(z, vi)))[1:t])
-    Ai = vcat([zero(K) for _ in 1:2T-1], [one(K)], sigmai, [zero(K) for _ in 1:(2T - t - 1)])
-    wi = vcat(map(i -> (-i)*sigmai[i], 1:t), [zero(K) for _ in 1:2T - t])
+    Ai = vcat([zero(K) for _ in 1:(2T - 1)], [one(K)], sigmai, [zero(K) for _ in 1:(2T - t - 1)])
+    wi = vcat(map(i -> (-i) * sigmai[i], 1:t), [zero(K) for _ in 1:(2T - t)])
 
     # sj are the power sums of vi:
     # s1 = v1 +..+ vt,
@@ -241,16 +251,14 @@ function _fast_multivariate_evaluate(R, f, ω, T)
     sj = shift_left(sj, 1) + t
 
     g = Runiv(reverse(a_prime, t))
-    res = sj*g
+    res = sj * g
     res = mod(shift_right(res, t - 1), z^(T))
 
     collect(coefficients(res))
 end
 
-# Dispatch between the three cases, t = # term in f:
-# t == T: use the algorithm directly;
-# t < T: 
-# t > T:
+# Dispatch between the two cases, t = # term in f:
+# t <= T and t > T
 function fast_multivariate_evaluate(R, f, ω, T::Integer)
     t = length(f)
     K = base_ring(R)
@@ -261,20 +269,38 @@ function fast_multivariate_evaluate(R, f, ω, T::Integer)
     evals = map(_ -> zero(K), 1:T)
     tms = collect(terms(f))
     for i in 1:q
-        fi = sum(view(tms, (1 + T*(i - 1)):T*i))
+        fi = sum(view(tms, (1 + T * (i - 1)):(T * i)))
         evi = _fast_multivariate_evaluate(R, fi, ω, T)
         @assert length(evi) == T
         for j in 1:T
             evals[j] += evi[j]
         end
     end
-    rm = t - q*T
+    rm = t - q * T
     if !iszero(rm)
-        fend = sum(tms[T*q+1:end])
+        fend = sum(tms[(T * q + 1):end])
         evend = _fast_multivariate_evaluate(R, fend, ω, T)
         for j in 1:T
             evals[j] += evend[j]
         end
     end
     evals
+end
+
+# Given a vector of multivariate polynomials {F_j}, j = 1..k and an evaluation
+# point, returns the array of evaluations: {F_j(p^i)}, j = 1..k, i = 0..T-1
+function simultaneous_multivariate_evaluate(R, polys, point, T)
+    field = base_ring(R)
+    polys_eval = Vector{Vector{eltype(point)}}(undef, T)
+    for i in 1:length(polys_eval)
+        polys_eval[i] = map(_ -> zero(field), 1:length(polys))
+    end
+    for i in 1:length(polys)
+        iszero(polys[i]) && continue
+        coeffs_eval = fast_multivariate_evaluate(R, polys[i], point, T)
+        for j in 1:length(coeffs_eval)
+            polys_eval[j][i] = coeffs_eval[j]
+        end
+    end
+    polys_eval
 end
