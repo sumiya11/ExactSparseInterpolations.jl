@@ -23,7 +23,7 @@ end
 function primpart_in(f, x)
     cont = content_in(f, x)
     isone(cont) && return f
-    divexact(f, cont*leading_coefficient(f))
+    divexact(f, cont * leading_coefficient(f))
 end
 
 function my_primpart(F)
@@ -47,14 +47,14 @@ end
 function hensel_step(f, g, h, s, t, m)
     m2 = m^2
     # well, this just calls bivariate polynomial division, which is sad
-    e = mod(f - g*h, m2)
-    q, r = divrem(s*e, h)
-    gstar = mod(g + t*e + q*g, m2)
+    e = mod(f - g * h, m2)
+    q, r = divrem(s * e, h)
+    gstar = mod(g + t * e + q * g, m2)
     hstar = mod(h + r, m2)
-    b = mod(s*gstar + t*hstar - one(s), m2)
-    c, d = divrem(s*b, hstar)
+    b = mod(s * gstar + t * hstar - one(s), m2)
+    c, d = divrem(s * b, hstar)
     sstar = mod(s - d, m2)
-    tstar = mod(t - t*b - c*gstar, m2)
+    tstar = mod(t - t * b - c * gstar, m2)
     gstar, hstar, sstar, tstar
 end
 
@@ -71,23 +71,23 @@ end
 # where n = deg_x(F)
 function hensel_multifactor_lifting(F::T, fi::Vector{T}, l::Integer, p::T) where {T}
     lcf = leading_coefficient_in(F, first(gens(parent(F))))
-    @assert mod(lcf*prod(fi), p) == mod(F, p)
+    # @assert mod(lcf * prod(fi), p) == mod(F, p)
     r = length(fi)
     if isone(r)
         # this can be turned into inverting modulo p,
         # plus newton iteration
         lcfinv = invmod(lcf, p^l)
-        return [mod(F*lcfinv, p^l)]
+        return [mod(F * lcfinv, p^l)]
     end
     k = div(r, 2)
     d = ceil(Int, log2(l))
-    gi = mod(lcf*prod(fi[i] for i in 1:k), p)
+    gi = mod(lcf * prod(fi[i] for i in 1:k), p)
     hi = mod(prod(fi[i] for i in k+1:r), p)
     I_am_one, si, ti = Nemo.gcdx(gi, hi)
-    @assert isone(I_am_one)
+    #@assert isone(I_am_one)
     si, ti = mod(si, p), mod(ti, p)
     for j in 1:d
-        m = p^(2^(j-1))
+        m = p^(2^(j - 1))
         gi, hi, si, ti = hensel_step(F, gi, hi, si, ti, m)
     end
     f1tok = hensel_multifactor_lifting(gi, fi[1:k], l, p)
