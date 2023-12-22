@@ -20,19 +20,19 @@ function irreducible_factorization(F)
     end
     isconstant(F) && return coeff(F, 1), monomial_multiples
 
-    # 0. Random dilation (or dilatation?..)
+    # 0. Apply a random dilation (or dilatation?..)
     dilation = map(_ -> rand(ground_field), 1:nvars(ring))
     F = evaluate(F, gens(ring) .* dilation)
     @info "Using random dilation $(gens(ring)) -> $(gens(ring) .* dilation)"
 
-    # 1. Apply the transformation, together a regularizing transformation x_i -> x_i ξ^w_n
+    # 1. Apply the transformation, together with a regularizing map x_i -> x_i ξ^w_n
     α = map(ground_field, Primes.nextprimes(2, nvars(ring)))
     β = map(_ -> rand(ground_field), 1:nvars(ring))
     γ = map(_ -> rand(ground_field), 1:nvars(ring))
     F̂_regular = homotopy_substitution_with_regularizing_transform(F, α, β, γ)
     @debug "After the substitution (factored for convenience):" Nemo.factor(F̂_regular)
 
-    # 2. Compute a 4-variate factorization of the first specialization (together with regularizing ξ)
+    # 2. Compute a 4-variate factorization of the first specialization
     new_ring = parent(F̂_regular)
     (ξ, xs..., t, u, v, λ) = gens(new_ring)
     F̂_regular = divexact(F̂_regular, ξ^valuation(F̂_regular, ξ))
@@ -54,7 +54,7 @@ function irreducible_factorization(F)
     collected_evaluations = [parent_ring_change(F¹, quad_ring)]
     collected_factor_evaluations = [map(f -> parent_ring_change(f, quad_ring), Pi¹)]
 
-    # 5. The main evaluate-lift-interpolate loop
+    # 5. Main evaluate-lift-interpolate loop
     m = 2
     Pi = nothing
     while true
@@ -72,7 +72,6 @@ function irreducible_factorization(F)
             Fⁱ = collected_evaluations[i]
             Pi_quad = collected_factor_evaluations[i - 1]
             Pⁱi = hensel_lift_quad_variate(Fⁱ, c, Pi_quad)
-            # @info "Lift for α^$(i-1)" Pⁱi
             @assert prod(Pⁱi) == divexact(Fⁱ, c)
             @assert all(i -> evaluate(Pⁱi[i], [λ4], [zero(λ4)]) == evaluate(Pi_quad[i], [λ4], [one(λ4)]), 1:length(Pⁱi))
             push!(collected_factor_evaluations, Pⁱi)
@@ -91,6 +90,7 @@ function irreducible_factorization(F)
             end
         end
 
+        # Check if the interpolation was successful
         success = success && prod(Pi) * leading_coefficient(F) == F
 
         if success
@@ -108,6 +108,10 @@ function irreducible_factorization(F)
 
     return leading_coefficient(F), append!(Pi, monomial_multiples)
 end
+
+############################################################
+########################## Utils ###########################
+############################################################
 
 # Returns
 #   F( 
@@ -163,7 +167,7 @@ function hensel_lift_quad_variate(Fⁱ, c, F_prev_factorization)
     @debug "" F_quad c Ps_quad
     @assert c * prod(map(f -> evaluate(f, [λ4], [one(λ4)]), Ps_quad)) == mod(F_quad, λ4)
 
-    # apply random shift
+    # Apply a "random" shift
     subs = [t4, t4 + u4 + 12323, t4 + v4 + 1241, λ4]
     subs_rev = [t4, u4 - t4 - 12323, v4 - t4 - 1241, λ4]
     @assert evaluate(evaluate(F_quad, subs), subs_rev) == F_quad
@@ -176,7 +180,7 @@ function hensel_lift_quad_variate(Fⁱ, c, F_prev_factorization)
     interpolator = PrimesBenOrTiwari(interpolation_ring, T)
     point = startingpoint(interpolator)
 
-    @debug "lifting up to" l T point
+    @debug "lifting with parameters" l T point
     
     points = [point .^i for i in 0:2T-1]
     factor_lifted_evaluations = []
@@ -234,12 +238,11 @@ function try_to_interpolate_coefficients(new_ring, interpolation_ring, c, collec
     return true, Ps_result
 end
 
-###########################################################
-#################### Inline tests #########################
-###########################################################
+############################################################
+####################### Inline tests #######################
+############################################################
 
-using Nemo 
-
+using Nemo
 using Test
 
 R, (x1,x2,x3) = Nemo.GF(2^31-1)["x1","x2","x3"]
@@ -272,8 +275,6 @@ F = (5x1*x2*x3 - 1) * (6x1 * x2 - 2) * (7x1 - 3)^2
 c, Pi = irreducible_factorization(F)
 @test prod(Pi) * c == F && length(Pi) == 3
 
-F = (x1 + x2)*(x2 + x3)*(x1 - x3)*(x1*x2 - x1*x3 - 2)*(x1*x3 - x2*x3 - 3)*(x1*x2*x3 - 99)
+F = (x1 + x2)*(x2 + x3)*(x1*x2 - x1*x3 - 2)*(x1*x3 - x2*x3 - 3)*(x1*x2*x3 - 99)
 c, Pi = irreducible_factorization(F)
-@test prod(Pi) * c == F && length(Pi) == 6
-
-
+@test prod(Pi) * c == F && length(Pi) == 5

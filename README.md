@@ -14,34 +14,26 @@ Pkg.add("Nemo")
 ### Example
 
 This package can be used in combination with Nemo.jl.
-To factor some polynomials, first, load the packages:
+First, load the packages:
 
 ```julia
 using ExactSparseInterpolations
 using Nemo
 ```
 
-Create a polynomial ring in three variables and a polynomial:
+Then, you can use the function `irreducible_factorization`:
 
 ```julia
 # declare Z[x,y,z]/<3*2^30+1>
-R, (x, y, z) = GF(3*2^30+1)["x","y","z"]
+R, (x1, x2, x3) = GF(3*2^30+1)["x1","x2","x3"]
 
-f = (x + y^2 + z^2 + 7) * (x^2 + x*y*z + 1) * (y^2 + z)
-```
+F = (x1 + x2)*(x2 + x3)*(x1*x2 - x1*x3 - 2)*(x1*x3 - x2*x3 - 3)*(x1*x2*x3 - 99)
 
-Then, you can use the `top_level_factorize` function:
-
-```julia
-top_level_factorize(f)
+c, factors = irreducible_factorization(F)
 ```
 
 As a result, you will obtain:
 
 ```julia
-3-element Vector{gfp_mpoly}:
- x^2 + x*y*z + 1
- x + y^2 + z^2 + 7
- y^2 + z
-```
 
+```

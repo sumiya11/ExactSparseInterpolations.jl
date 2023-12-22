@@ -6,6 +6,7 @@ using Primes
 import Random
 import Combinatorics, Permutations
 using LinearAlgebra
+using Test
 
 include("general/abstract.jl")
 
@@ -47,6 +48,6 @@ include("iterative-gcd.jl")
 
 include("irreducible-factorization.jl")
 
-export top_level_factorize
+export irreducible_factorization
 
 end
