@@ -1,28 +1,22 @@
 
-# Given F in K[x1,...,xn], returns F(x1,...,xk,ck+1,...,cn)
-function project(F, k::Integer, c)
-    ring = parent(F)
-    K = base_ring(ring)
-    @assert 1 <= k <= nvars(ring)
-    _, new_vars = PolynomialRing(K, map(string, gens(ring)[1:k]), ordering=Nemo.ordering(ring))
-    eval_point = vcat(new_vars, c[(k + 1):nvars(ring)])
-    evaluate(F, eval_point)
-end
-
 function iterative_factor(F; trace_info=[])
     @assert length(Nemo.factor(F)) == 2  # just to be sure!
     ring = parent(F)
     n = nvars(ring)
     field = base_ring(ring)
-    c, F2 = nothing, nothing
+    c, F2, bivariate_factors = nothing, nothing, nothing
     # the projection may split into 3+ factors, want to avoid that
     while true
         c = distinct_points(field, n)
+        # c = map(field, [i + 6 for i in 1:n])
         F2 = project(F, 2, c)
         bivariate_factors = collect(Nemo.factor(F2))
         length(bivariate_factors) == 2 && break
     end
+    @info "" F2 bivariate_factors
     A2, B2 = map(first, collect(Nemo.factor(F2)))
+    A2 = leading_coefficient(F2) * A2
+    B2 = leading_coefficient(F2) * B2
     @info """
     Projection point: $c
     Bivariate factors: 
@@ -50,15 +44,18 @@ function _iterative_factor(F, A2, B2, c; trace_info=[])
         Ak, Bk = Bk, Ak
     end
     @info "Lifting from $(n - 1) to $n variables"
-    @debug """
+    @info """
     Fk = $Fk
     Ak = $Ak
     Bk = $Bk"""
     # Evaluating F and Ak at a geometric progression.
     # (assuming T points are enough)
-    T = min(length(F), 3 * round(Int, sqrt(length(F))))
+    T = 2length(F)
     point = distinct_points(field, k)
-    @debug "Evaluation points: $T"
+    # point = map(field, Primes.primes(2, 100)[1:k])
+    @info """
+    Generator: $point
+    Evaluation points: $T"""
     # Densification in t for Ak(x1 t, ..., xk t, ck+1, ..., cn) and analogous for Bk
     Ak_t = apply_regularizing_weight(Ak, ones(Int, k))
     Bk_t = apply_regularizing_weight(Bk, ones(Int, k))
@@ -73,7 +70,7 @@ function _iterative_factor(F, A2, B2, c; trace_info=[])
             simultaneous_multivariate_evaluate(ring, f_coeffs, vcat(point, one(field)), T),
         F_tu
     )
-    @debug """
+    @info """
     Densification in t:
     \tAk_t = $Ak_t
     \tBk_t = $Bk_t
@@ -112,7 +109,7 @@ function _iterative_factor(F, A2, B2, c; trace_info=[])
         A_tu_lifted[i] = leading_coefficient_in(Ak_t_i, t) * AB_tu_i[1]
         B_tu_lifted[i] = leading_coefficient_in(Bk_t_i, t) * AB_tu_i[2]
     end
-    @debug """
+    @info """
     Lifted evaluated factors:
     A: $A_tu_lifted
     B: $B_tu_lifted"""
@@ -140,6 +137,7 @@ function _iterative_factor(F, A2, B2, c; trace_info=[])
         interpolated_sum_of_terms = interpolated_sum_of_terms * last_var^(u_deg)
         An += interpolated_sum_of_terms
     end
+    @info "" An
     Bn = divexact(F, An)
     @info """
     The number of terms in the factors:
@@ -160,11 +158,13 @@ end
 # Pkg.add("Nemo")
 #
 # # Then, you should be able to do:
-# using Nemo, ExactSparseInterpolations
-#
-# R, x = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:20]...])
-#
-# f = (sum(x)^2 + 5) * (sum(x)^2 + 4);
+# using Nemo #, ExactSparseInterpolations
+
+# R, (x1, x2, x3) = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:3]...])
+
+# f = (x1 + 1) * (x1 + x1 * x3 + 100);
 # A, B = iterative_factor(f);
-# 
+
+# A, B
+
 # @assert A * B == f

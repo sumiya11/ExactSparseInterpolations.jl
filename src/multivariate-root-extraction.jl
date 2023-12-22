@@ -56,108 +56,90 @@ function apply_regularizing_weight(F, w)
     multivariate_polys
 end
 
-# Returns the gcd of P and Q
-function multivariate_gcd(P, Q; do_homogenize=false)
-    orig_ring = parent(P)
-    if do_homogenize
-        d = max(total_degree(P), total_degree(Q))
-        P, Q = homogenize(P), homogenize(Q)
-        @info """
-        Degree before homogenization: $d
-        Degree after homogenization: $(max(total_degree(P), total_degree(Q)))"""
-    end
-    ring = parent(P)
+function multivariate_root_extraction(F)
+    orig_ring = parent(F)
+    ring = parent(F)
     field = base_ring(ring)
     # Random dilation, just in case
     dilation = distinct_points(field, nvars(ring))
-    P = evaluate(P, dilation .* gens(ring))
-    Q = evaluate(Q, dilation .* gens(ring))
+    F = evaluate(F, dilation .* gens(ring))
     # Find a map from f(x_1,...,x_n) to f(x_1 t^i_1, ..., x_n t^i_n), such
     # that the images of P and Q are w-regular
-    w = find_regularizing_weight(P, Q)
-    P_hat_coeffs = apply_regularizing_weight(P, w)
-    Q_hat_coeffs = apply_regularizing_weight(Q, w)
+    w = find_regularizing_weight(F)
+    F_hat_coeffs = apply_regularizing_weight(F, w)
     @info """
     Tagging map: $w
-    Initial total degree: $(max(total_degree(P), total_degree(Q)))
-    Weighted degree: $(max(length(P_hat_coeffs), length(Q_hat_coeffs)) - 1)"""
-    @assert length(P_hat_coeffs[end]) == 1 || length(Q_hat_coeffs[end]) == 1
-    @assert sum(P_hat_coeffs) == P && sum(Q_hat_coeffs) == Q
-    # Evaluate P_hat and Q_hat at a geometric progression. 
+    Initial total degree: $(max(total_degree(F)))
+    Weighted degree: $(length(F_hat_coeffs))"""
+    @assert length(F_hat_coeffs[end]) == 1
+    @assert sum(F_hat_coeffs) == F
+    # Evaluate F_hat at a geometric progression. 
     # Use the min. number of terms in the input as a crude estimation.
-    T = min(length(P), length(Q))
+    T = length(F)
     interpolator = PrimesBenOrTiwari(ring, T)
     point = startingpoint(interpolator)
     @info """
     Evaluation point: $point, dilation: $dilation
     Interpolating for $T terms"""
-    P_hat_coeffs_eval = simultaneous_multivariate_evaluate(ring, P_hat_coeffs, point, 2T)
-    Q_hat_coeffs_eval = simultaneous_multivariate_evaluate(ring, Q_hat_coeffs, point, 2T)
-    # Compute the gcd of the specialized P_hat and Q_hat
+    F_hat_coeffs_eval = simultaneous_multivariate_evaluate(ring, F_hat_coeffs, point, 2T)
+    # Compute the root of the specialized F_hat
     ring_univariate, t = PolynomialRing(field, "t")
-    gcds_univariate_coeffs = Vector{Vector{elem_type(field)}}(undef, 2T)
-    lead = wlead(P, w) * wlead(Q, w)
+    roots_univariate_coeffs = Vector{Vector{elem_type(field)}}(undef, 2T)
+    lead = wlead(F, w)
     for i in 1:(2T)
-        P_hat_eval = ring_univariate(P_hat_coeffs_eval[i])
-        Q_hat_eval = ring_univariate(Q_hat_coeffs_eval[i])
-        gcd_hat = gcd(P_hat_eval, Q_hat_eval)
-        gcd_hat = shift_right(gcd_hat, valuation(gcd_hat, t))
-        @assert isone(leading_coefficient(gcd_hat))
-        @assert iszero(valuation(gcd_hat, t))
-        gcds_univariate_coeffs[i] = collect(coefficients(gcd_hat))
+        F_hat_eval = ring_univariate(F_hat_coeffs_eval[i])
+        root_hat = Nemo.sqrt(F_hat_eval)
+        root_hat = shift_right(root_hat, valuation(root_hat, t))
+        root_hat = divexact(root_hat, leading_coefficient(root_hat))
+        @assert isone(leading_coefficient(root_hat))
+        @assert iszero(valuation(root_hat, t))
+        roots_univariate_coeffs[i] = collect(coefficients(root_hat))
         # Correction: multiply by the evalution of a large monomial to keep
         # things polynomial.
-        # NOTE: this was not in the manuscript
         lead_monom_eval = evaluate(lead, point .^ (i - 1))
-        gcds_univariate_coeffs[i] .*= lead_monom_eval
+        roots_univariate_coeffs[i] .*= lead_monom_eval
     end
     # Interpolate each coefficient of the gcd
-    G_coeffs = Vector{elem_type(ring)}(undef, length(first(gcds_univariate_coeffs)))
+    R_coeffs = Vector{elem_type(ring)}(undef, length(first(roots_univariate_coeffs)))
     points = map(i -> point .^ i, 0:(2T - 1))
-    for i in 1:length(G_coeffs)
-        gcd_coeffs_i = [cfs[i] for cfs in gcds_univariate_coeffs]
-        G_coeffs[i] = interpolate!(interpolator, points, gcd_coeffs_i)
+    for i in 1:length(R_coeffs)
+        root_coeffs_i = [cfs[i] for cfs in roots_univariate_coeffs]
+        R_coeffs[i] = interpolate!(interpolator, points, root_coeffs_i)
     end
-    G_hat = sum(G_coeffs)
+    R_hat = sum(R_coeffs)
     # Account for the valuation in x_1, ..., x_n
     xs = gens(ring)
     for x in xs
-        correction_degree = min(valuation(P, x), valuation(Q, x)) - valuation(G_hat, x)
+        correction_degree = div(valuation(F, x), 2) - valuation(R_hat, x)
         if correction_degree < 0
-            G_hat = divexact(G_hat, x^(-correction_degree))
+            R_hat = divexact(R_hat, x^(-correction_degree))
         else
-            G_hat = G_hat * x^(correction_degree)
+            R_hat = R_hat * x^(correction_degree)
         end
     end
-    G = G_hat
+    R = R_hat
     # Reverse dilation
-    G = evaluate(G, inv.(dilation) .* gens(ring))
-    if do_homogenize
-        G = evaluate(G, vcat(one(orig_ring), gens(orig_ring)))
-    end
-    G = divexact(G, leading_coefficient(G))
-    G
+    R = evaluate(R, inv.(dilation) .* gens(ring))
+    R = divexact(R, leading_coefficient(R))
+    R
 end
 
 ####################
 ####################
 
-# For example, you can run the following commands in Julia.
+# # using Nemo, ExactSparseInterpolations
+# using Nemo
 
-# # First, install / update the packages:
-# using Pkg
-# Pkg.add(url="https://github.com/sumiya11/ExactSparseInterpolations.jl")
-# Pkg.add("Nemo")
-#
-# # Then, you should be able to do:
-# using Nemo, ExactSparseInterpolations
-#
-# R, x = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:6]...])
-#
-# P = (x[1] + x[2] + 2) * sum(x)^2 * (prod(x) - 1) * x[5]
-# Q = (x[1] + x[2] + 3) * sum(x)^3 * (prod(x) + 1) * x[5] * x[6]
-#
-# G1 = Nemo.gcd(P, Q)
-# G2 = ExactSparseInterpolations.multivariate_gcd(P, Q)
-#
-# @assert G1 == G2
+# R, (x1, x2, x3, x4, x5, x6) = PolynomialRing(GF(2^62 + 135), [["x$i" for i in 1:6]...])
+
+# F = (x1 * x2 - 1)^2;
+# length(F), degrees(F)
+
+# @time R1 = Nemo.sqrt(F);
+# @time R2 = ExactSparseInterpolations.multivariate_root_extraction(F);
+
+# R1
+# R2
+
+# length(R1), degrees(R1)
+# R1 == R2

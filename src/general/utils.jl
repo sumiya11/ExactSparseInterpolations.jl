@@ -55,3 +55,64 @@ macro savetime(flag, key, expr)
         end
     end
 end
+
+"""
+    parent_ring_change(poly, new_ring)
+
+Converts a polynomial to a different polynomial ring
+Input
+- `poly` - a polynomial to be converted
+- `new_ring` - a polynomial ring such that every variable name appearing in poly appears among the generators
+
+Output:
+- a polynomial in `new_ring` “equal” to `poly`
+"""
+function parent_ring_change(
+    poly::MPolyElem,
+    new_ring::MPolyRing;
+    matching = :byname,
+    shift = 0,
+)
+    old_ring = parent(poly)
+    # Construct a mapping for the variable indices.
+    # Zero indicates no image of the old variable in the new ring  
+    var_mapping = zeros(Int, max(nvars(old_ring), nvars(new_ring)))
+    if matching === :byname
+        old_symbols, new_symbols = symbols(old_ring), symbols(new_ring)
+        for i in 1:length(old_symbols)
+            u = old_symbols[i]
+            found = findfirst(v -> (u === v), new_symbols)
+            isnothing(found) && continue
+            var_mapping[i] = found
+        end
+    elseif matching === :byindex
+        var_mapping[1:(nvars(new_ring) - shift)] .= (1 + shift):nvars(new_ring)
+    else
+        throw(Base.ArgumentError("Unknown matching type: $matching"))
+    end
+    # Hoist the compatibility check out of the loop
+    for i in 1:nvars(old_ring)
+        if degree(poly, i) > 0 && iszero(var_mapping[i])
+            throw(
+                Base.ArgumentError(
+                    """
+                    The polynomial $poly contains a variable $(gens(old_ring)[i]) not present in the new ring.
+                    New ring variables are $(gens(new_ring)))""",
+                ),
+            )
+        end
+    end
+    bring = base_ring(new_ring)
+    exps = Vector{Vector{Int}}(undef, length(poly))
+    coefs = map(c -> bring(c), coefficients(poly))
+    @inbounds for i in 1:length(poly)
+        evec = exponent_vector(poly, i)
+        new_exp = zeros(Int, nvars(new_ring))
+        for i in 1:length(evec)
+            iszero(var_mapping[i]) && continue
+            new_exp[var_mapping[i]] = evec[i]
+        end
+        exps[i] = new_exp
+    end
+    return new_ring(coefs, exps)
+end

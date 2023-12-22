@@ -9,8 +9,8 @@ function multivariate_square_free(F)
     F = evaluate(F, dilation .* gens(ring))
     # Find a map from f(x_1,...,x_n) to f(x_1 t^i_1, ..., x_n t^i_n), such
     # that the images of P and Q are w-regular
-    w = find_tagging_map(F)
-    F_hat_coeffs = apply_tagging_map(F, w)
+    w = find_regularizing_weight(F)
+    F_hat_coeffs = apply_regularizing_weight(F, w)
     @info "Tagging map: $w, weighted degree is $(length(F_hat_coeffs) - 1)"
     @debug "" F_hat_coeffs
     T = length(F)

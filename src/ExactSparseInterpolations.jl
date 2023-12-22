@@ -39,8 +39,13 @@ include("factorization/bivariate-factor-ff.jl")
 include("factorization/multivariate-factor-ff.jl")
 
 include("multivariate-gcd.jl")
+include("multivariate-root-extraction.jl")
 include("multivariate-square-free.jl")
 include("iterative-factor.jl")
+include("iterative-factor-v2.jl")
+include("iterative-gcd.jl")
+
+include("irreducible-factorization.jl")
 
 export top_level_factorize
 

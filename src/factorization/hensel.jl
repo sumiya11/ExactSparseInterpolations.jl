@@ -23,7 +23,7 @@ end
 function primpart_in(f, x)
     cont = content_in(f, x)
     isone(cont) && return f
-    divexact(f, cont * leading_coefficient(f))
+    divexact(f, cont)
 end
 
 function my_primpart(F)
@@ -96,7 +96,45 @@ function hensel_multifactor_lifting(F::T, fi::Vector{T}, l::Integer, p::T) where
     append!(f1tok, fktor)
 end
 
-function hensel_normalization_joris(F::T, Fi::Vector{T}, l, p) where {T}
+function hensel_lift(F::T, Fi::Vector{T}, l::Integer, p::T) where {T}
+    R = parent(F)
+    x, y = gens(R)
+    @assert all(f -> isone(leading_coefficient_in(f, x)), Fi)
+    Fi = hensel_multifactor_lifting(F, Fi, l, p)
+    Fi = hensel_normalization_joris(F, Fi, l, p)
+    Fi
+end
+
+##########
+##########
+
+function hensel_multifactor_lifting_2(F::T, fi::Vector{T}, l::Integer, p::T) where {T}
+    lcf = leading_coefficient_in(F, first(gens(parent(F))))
+    @assert isone(mod(invmod(lcf, p^l) * lcf, p))
+    @assert mod(lcf*prod(fi), p) == mod(F, p)
+    r = length(fi)
+    if isone(r)
+        lcfinv = invmod(lcf, p^l)
+        return [mod(F * lcfinv, p^l)]
+    end
+    @assert r > 1
+    k = div(r, 2)
+    d = ceil(Int, log2(l))
+    gi = mod(lcf * prod(fi[i] for i in 1:k), p)
+    hi = mod(prod(fi[i] for i in (k + 1):r), p)
+    I_am_one, si, ti = Nemo.gcdx(gi, hi)
+    @assert isone(I_am_one)
+    si, ti = mod(si, p), mod(ti, p)
+    for j in 1:d
+        m = p^(2^(j - 1))
+        gi, hi, si, ti = hensel_step(F, gi, hi, si, ti, m)
+    end
+    f1tok = hensel_multifactor_lifting_2(gi, fi[1:k], l, p)
+    fktor = hensel_multifactor_lifting_2(hi, fi[(k + 1):r], l, p)
+    append!(f1tok, fktor)
+end
+
+function hensel_normalization_joris_2(F::T, Fi::Vector{T}, l, p) where {T}
     R = parent(F)
     K = base_ring(R)
     x, y = gens(R)
@@ -120,11 +158,22 @@ function hensel_normalization_joris(F::T, Fi::Vector{T}, l, p) where {T}
     result
 end
 
-function hensel_lift(F::T, Fi::Vector{T}, l::Integer, p::T) where {T}
+function hensel_lift_2(F::T, Fi::Vector{T}, l::Integer, p::T) where {T}
+    @assert mod(F, p) == mod(prod(Fi), p)
     R = parent(F)
-    x, y = gens(R)
-    @assert all(f -> isone(leading_coefficient_in(f, x)), Fi)
-    Fi = hensel_multifactor_lifting(F, Fi, l, p)
-    Fi = hensel_normalization_joris(F, Fi, l, p)
-    Fi
+    x, y = gens(R)    
+    lcf = leading_coefficient_in(F, x)
+    cs = map(f -> leading_coefficient_in(f, x), Fi)
+    Fi_monic = map(i -> divexact(Fi[i], cs[i]), 1:length(cs))
+
+    Fi_lifted = hensel_multifactor_lifting_2(F, Fi_monic, l, p)
+    @assert mod(F, p^l) == mod(lcf*prod(Fi_lifted), p^l)
+
+    # Dirty hacks to do normalization
+    Fi_normalized = map(i -> mod(Fi_lifted[i] * lcf, p^l), 1:length(cs))
+    Fi_normalized = map(i -> primpart_in(Fi_normalized[i], x), 1:length(cs))
+    Fi_normalized = map(i -> divexact(Fi_normalized[i], coeff(leading_coefficient_in(Fi_normalized[i], x), length(leading_coefficient_in(Fi_normalized[i], x)))), 1:length(cs))    
+    Fi_normalized = map(i -> cs[i] * Fi_normalized[i], 1:length(cs))
+
+    Fi_normalized
 end
