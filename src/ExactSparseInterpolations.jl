@@ -48,6 +48,6 @@ include("iterative-gcd.jl")
 
 include("irreducible-factorization.jl")
 
-export irreducible_factorization
+export irreducible_factorization, irreducible_factorization_2
 
 end
