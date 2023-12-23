@@ -13,8 +13,7 @@ Pkg.add("Nemo")
 
 **Disclaimer.**
 Recently, there was a number of breaking changes in Nemo.jl. 
-The examples below should work, but if they don't, you might want to install a specific verion of Nemo.jl.
-
+The examples below should work out of the box, but if they don't, you might want to install a specific verion of Nemo.jl.
 To do that, assuming you are in the root directory of this project, simply do
 
 ```julia
